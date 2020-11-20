@@ -5,13 +5,15 @@ import (
 	"tbot/config"
 	bot2 "tbot/internal/bot"
 	"tbot/internal/errors"
-	wiki2 "tbot/internal/wiki"
+	"tbot/services"
+	newton2 "tbot/services/newton"
+	wiki2 "tbot/services/wiki"
 )
 
 var (
 	defaultSettingsFile = "settings.yaml"
 	settingsFile        = flag.String("settings", defaultSettingsFile, "the path to settings file, if not its will use default")
-	defaultToken        = "" //TODO write bot token here or in program arg, or in .env file, or in env variables
+	defaultToken        = "" //TODO write a bot token here or in program arg, or in .env file, or in env variables
 	token               = flag.String("token", defaultToken, "the path to settings file")
 )
 
@@ -22,8 +24,10 @@ func main() {
 	errors.PanicIfErr(err)
 
 	wiki := wiki2.NewWiki(cfg.Stg.WikiStg)
+	newton := newton2.NewNewton(cfg.Stg.NewtonStg)
+	serviceManager := services.NewServiceManager(wiki, newton)
 
-	bot, err := bot2.NewBot(cfg, wiki)
+	bot, err := bot2.NewBot(cfg, serviceManager)
 	errors.PanicIfErr(err)
 
 	err = bot.Start()

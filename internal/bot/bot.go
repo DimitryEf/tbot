@@ -5,25 +5,25 @@ import (
 	"log"
 	"strings"
 	"tbot/config"
-	wiki2 "tbot/internal/wiki"
+	"tbot/services"
 )
 
 type Bot struct {
-	bot  *tgbotapi.BotAPI
-	cfg  *config.Config
-	wiki *wiki2.Wiki
+	bot *tgbotapi.BotAPI
+	cfg *config.Config
+	sm  *services.ServiceManager
 }
 
-func NewBot(cfg *config.Config, wiki *wiki2.Wiki) (*Bot, error) {
+func NewBot(cfg *config.Config, sm *services.ServiceManager) (*Bot, error) {
 	bot, err := tgbotapi.NewBotAPI(cfg.Token)
 	if err != nil {
 		return nil, err
 	}
 	bot.Debug = true
 	return &Bot{
-		bot:  bot,
-		cfg:  cfg,
-		wiki: wiki,
+		bot: bot,
+		cfg: cfg,
+		sm:  sm,
 	}, nil
 }
 
@@ -48,9 +48,17 @@ func (b *Bot) Start() error {
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
 		//msg.ReplyToMessageID = update.Message.MessageID
 
-		msg.Text, err = b.Act(msg.Text)
+		msg.Text, err = b.act(msg.Text)
 		if err != nil {
 			log.Printf("error: %v", err)
+		}
+
+		if msg.Text == "" {
+			msg.Text = "не получилось..."
+		}
+
+		if len(msg.Text) > 4096 {
+			msg.Text = msg.Text[:4096]
 		}
 
 		_, err = b.bot.Send(msg)
@@ -61,30 +69,36 @@ func (b *Bot) Start() error {
 	return nil
 }
 
-func (b *Bot) Act(msgText string) (string, error) {
+func (b *Bot) act(msgText string) (string, error) {
 	if len(msgText) < 3 {
 		return msgText, nil
 	}
 
-	for service, acts := range b.cfg.Stg.Services {
+	for serviceTag, acts := range b.cfg.Stg.Services {
 		for _, act := range acts {
 			if strings.HasPrefix(msgText, act) {
 				text := msgText[len(act):]
-				return b.takeAction(service, text)
+				return b.chooseAction(serviceTag, text)
 			}
 		}
 	}
 	return msgText, nil
 }
 
-func (b *Bot) takeAction(service string, text string) (string, error) {
-	switch service {
+func (b *Bot) chooseAction(serviceTag string, text string) (string, error) {
+	switch serviceTag {
 	case b.cfg.Stg.WikiStg.Tag:
-		title, err := b.wiki.Query(text)
-		if err != nil {
-			return "", err
-		}
-		return title, nil
+		return b.takeAction(b.cfg.Stg.WikiStg.Tag, text)
+	case b.cfg.Stg.NewtonStg.Tag:
+		return b.takeAction(b.cfg.Stg.NewtonStg.Tag, text)
 	}
 	return text, nil
+}
+
+func (b *Bot) takeAction(tag string, text string) (string, error) {
+	result, err := b.sm.Services[tag].Query(text)
+	if err != nil {
+		return "", err
+	}
+	return result, nil
 }
