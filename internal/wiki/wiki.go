@@ -3,6 +3,7 @@ package wiki
 import (
 	"fmt"
 	"github.com/tidwall/gjson"
+	"html/template"
 	"io/ioutil"
 	"net/http"
 )
@@ -19,7 +20,7 @@ func NewWiki(url string) *Wiki {
 
 func (w *Wiki) Query(query string) (string, error) {
 	client := &http.Client{}
-	url := fmt.Sprintf("%s%s", w.url, query)
+	url := fmt.Sprintf("%s%s", w.url, template.URLQueryEscaper(query))
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return "", err
