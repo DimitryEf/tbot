@@ -1,9 +1,9 @@
 package bot
 
 import (
-	"fmt"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"log"
+	"strings"
 	"tbot/config"
 	wiki2 "tbot/internal/wiki"
 )
@@ -48,7 +48,10 @@ func (b *Bot) Start() error {
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
 		//msg.ReplyToMessageID = update.Message.MessageID
 
-		msg.Text = b.Act(msg.Text)
+		msg.Text, err = b.Act(msg.Text)
+		if err != nil {
+			log.Printf("error: %v", err)
+		}
 
 		_, err = b.bot.Send(msg)
 		if err != nil {
@@ -58,19 +61,31 @@ func (b *Bot) Start() error {
 	return nil
 }
 
-func (b *Bot) Act(msgText string) string {
+func (b *Bot) Act(msgText string) (string, error) {
 	if len(msgText) < 3 {
-		return msgText
+		return msgText, nil
 	}
-	query := msgText[2:]
-	actName := msgText[:2]
-	switch actName {
-	case "w ", "W ", "wiki ", "Wiki ", "в ", "вики ":
-		title, err := b.wiki.Query(query)
-		if err != nil {
-			return fmt.Sprintf("error: %v", err)
+	acts := make(map[string][]string)
+	acts["wiki"] = []string{"w ", "W ", "wiki ", "Wiki ", "в ", "вики "}
+	for key, vals := range acts {
+		for _, val := range vals {
+			if strings.HasPrefix(msgText, val) {
+				text := msgText[len(val):]
+				return b.act(key, text)
+			}
 		}
-		return title
 	}
-	return msgText
+	return msgText, nil
+}
+
+func (b *Bot) act(key string, text string) (string, error) {
+	switch key {
+	case "wiki":
+		title, err := b.wiki.Query(text)
+		if err != nil {
+			return "", err
+		}
+		return title, nil
+	}
+	return text, nil
 }
