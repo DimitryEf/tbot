@@ -65,22 +65,21 @@ func (b *Bot) Act(msgText string) (string, error) {
 	if len(msgText) < 3 {
 		return msgText, nil
 	}
-	acts := make(map[string][]string)
-	acts["wiki"] = []string{"w ", "W ", "wiki ", "Wiki ", "в ", "вики "}
-	for key, vals := range acts {
-		for _, val := range vals {
-			if strings.HasPrefix(msgText, val) {
-				text := msgText[len(val):]
-				return b.act(key, text)
+
+	for service, acts := range b.cfg.Stg.Services {
+		for _, act := range acts {
+			if strings.HasPrefix(msgText, act) {
+				text := msgText[len(act):]
+				return b.takeAction(service, text)
 			}
 		}
 	}
 	return msgText, nil
 }
 
-func (b *Bot) act(key string, text string) (string, error) {
-	switch key {
-	case "wiki":
+func (b *Bot) takeAction(service string, text string) (string, error) {
+	switch service {
+	case b.cfg.Stg.WikiStg.Tag:
 		title, err := b.wiki.Query(text)
 		if err != nil {
 			return "", err

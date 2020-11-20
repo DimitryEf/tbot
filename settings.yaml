@@ -1,0 +1,17 @@
+wiki:
+  tag: "wiki"
+  url: "https://ru.wikipedia.org/w/api.php?format=json&action=query&prop=extracts&exintro=&explaintext=&titles="
+
+# map of services; the service will be started if the message starts with one of the prefixes
+services:
+  wiki:
+    - "w "
+    - "W "
+    - "wiki "
+    - "Wiki "
+    - "в "
+    - "В"
+    - "вики "
+    - "Вики "
+
+
