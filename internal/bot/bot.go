@@ -65,7 +65,7 @@ func (b *Bot) Act(msgText string) string {
 	query := msgText[2:]
 	actName := msgText[:2]
 	switch actName {
-	case "w ", "W ", "wiki ", "Wiki ":
+	case "w ", "W ", "wiki ", "Wiki ", "в ", "вики ":
 		title, err := b.wiki.Query(query)
 		if err != nil {
 			return fmt.Sprintf("error: %v", err)

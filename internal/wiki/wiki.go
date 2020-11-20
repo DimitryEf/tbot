@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 //https://ru.wikipedia.org/w/api.php?format=json&action=query&prop=extracts&exintro=&explaintext=&titles=java
@@ -20,7 +21,9 @@ func NewWiki(url string) *Wiki {
 
 func (w *Wiki) Query(query string) (string, error) {
 	client := &http.Client{}
-	url := fmt.Sprintf("%s%s", w.url, template.URLQueryEscaper(query))
+	url := strings.ToLower(query)
+	url = template.URLQueryEscaper(url)
+	url = fmt.Sprintf("%s%s", w.url, url)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return "", err
