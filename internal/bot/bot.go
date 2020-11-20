@@ -82,6 +82,10 @@ func (b *Bot) act(msgText string) (string, error) {
 			}
 		}
 	}
+
+	if strings.HasPrefix(msgText, "/help") {
+		return b.cfg.Stg.HelpText, nil
+	}
 	return msgText, nil
 }
 

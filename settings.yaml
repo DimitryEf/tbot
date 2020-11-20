@@ -1,3 +1,12 @@
+help_text: |
+  1) wiki - find some title in wikipedia
+  using: w [or W, в, В] <some_name>
+  example: "w go"
+
+  2) newton - powerful math calculator
+  using: n [or N, н, Н] <operation> <expression>
+  example: "n derive x^2+2x"
+
 wiki:
   tag: wiki
   url: https://ru.wikipedia.org/w/api.php?format=json&action=query&prop=extracts&exintro=&explaintext=&titles=

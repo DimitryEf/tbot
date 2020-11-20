@@ -7,6 +7,7 @@ import (
 )
 
 type Settings struct {
+	HelpText  string          `yaml:"help_text"`
 	WikiStg   *WikiSettings   `yaml:"wiki"`
 	NewtonStg *NewtonSettings `yaml:"newton"`
 
@@ -44,6 +45,14 @@ func NewSettings(fileName string) (*Settings, error) {
 
 func getDefaultSettings() *Settings {
 	return &Settings{
+		HelpText: `
+  1) wiki - find some title in wikipedia
+  using: w [or W, в, В] <some_name>
+  example: "w go"
+
+  2) newton - powerful math calculator
+  using: n [or N, н, Н] <operation> <expression>
+  example: "n derive x^2+2x"`,
 		WikiStg: &WikiSettings{
 			Tag: "wiki",
 			Url: "https://ru.wikipedia.org/w/api.php?format=json&action=query&prop=extracts&exintro=&explaintext=&titles=",
