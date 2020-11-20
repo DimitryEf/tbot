@@ -1,22 +1,31 @@
 package bot
 
 import (
+	"fmt"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"log"
+	"strings"
 	"tbot/config"
+	wiki2 "tbot/internal/wiki"
 )
 
 type Bot struct {
-	bot *tgbotapi.BotAPI
+	bot  *tgbotapi.BotAPI
+	cfg  *config.Config
+	wiki *wiki2.Wiki
 }
 
-func NewBot(cfg *config.Config) (*Bot, error) {
+func NewBot(cfg *config.Config, wiki *wiki2.Wiki) (*Bot, error) {
 	bot, err := tgbotapi.NewBotAPI(cfg.Token)
 	if err != nil {
 		return nil, err
 	}
 	bot.Debug = true
-	return &Bot{bot: bot}, nil
+	return &Bot{
+		bot:  bot,
+		cfg:  cfg,
+		wiki: wiki,
+	}, nil
 }
 
 func (b *Bot) Start() error {
@@ -39,6 +48,20 @@ func (b *Bot) Start() error {
 
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
 		//msg.ReplyToMessageID = update.Message.MessageID
+
+		if strings.HasPrefix(msg.Text, "w ") {
+			query := msg.Text[2:]
+			title, err := b.wiki.Query(query)
+			if err != nil {
+				//log.Printf("error: %v", err)
+				msg.Text = fmt.Sprintf("error: %v", err)
+				b.bot.Send(msg)
+				continue
+			}
+			msg.Text = title
+			b.bot.Send(msg)
+			continue
+		}
 
 		b.bot.Send(msg)
 	}

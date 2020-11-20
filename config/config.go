@@ -9,7 +9,8 @@ import (
 )
 
 type Config struct {
-	Token string
+	Token   string
+	WikiUrl string
 }
 
 func NewConfig() (*Config, error) {
@@ -19,7 +20,8 @@ func NewConfig() (*Config, error) {
 	}
 
 	return &Config{
-		Token: getEnv("TELEGRAM_BOT_TOKEN", ""),
+		Token:   getEnv("TELEGRAM_BOT_TOKEN", ""),
+		WikiUrl: "https://ru.wikipedia.org/w/api.php?format=json&action=query&prop=extracts&exintro=&explaintext=&titles=",
 	}, nil
 }
 
