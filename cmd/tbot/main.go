@@ -2,28 +2,17 @@ package main
 
 import (
 	"github.com/go-telegram-bot-api/telegram-bot-api"
-	"github.com/joho/godotenv"
 	"log"
-	"os"
+	"tbot/config"
+	"tbot/internal/errors"
 )
 
 func main() {
-	// loads values from .env into the system
-	if err := godotenv.Load(); err != nil {
-		log.Panic("No .env file found")
-	}
+	cfg, err := config.NewConfig()
+	errors.PanicIfErr(err)
 
-	// Get the GITHUB_USERNAME environment variable
-	token, exists := os.LookupEnv("TELEGRAM_BOT_TOKEN")
-
-	if !exists {
-		log.Panic("env TELEGRAM_BOT_TOKEN not found")
-	}
-
-	bot, err := tgbotapi.NewBotAPI(token)
-	if err != nil {
-		log.Panic(err)
-	}
+	bot, err := tgbotapi.NewBotAPI(cfg.Token)
+	errors.PanicIfErr(err)
 
 	bot.Debug = true
 
