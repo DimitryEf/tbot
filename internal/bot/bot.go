@@ -95,6 +95,8 @@ func (b *Bot) chooseAction(serviceTag string, text string) (string, error) {
 		return b.takeAction(b.cfg.Stg.WikiStg.Tag, text)
 	case b.cfg.Stg.NewtonStg.Tag:
 		return b.takeAction(b.cfg.Stg.NewtonStg.Tag, text)
+	case b.cfg.Stg.PlaygroundStg.Tag:
+		return b.takeAction(b.cfg.Stg.PlaygroundStg.Tag, text)
 	}
 	return text, nil
 }

@@ -7,9 +7,10 @@ import (
 )
 
 type Settings struct {
-	HelpText  string          `yaml:"help_text"`
-	WikiStg   *WikiSettings   `yaml:"wiki"`
-	NewtonStg *NewtonSettings `yaml:"newton"`
+	HelpText      string              `yaml:"help_text"`
+	WikiStg       *WikiSettings       `yaml:"wiki"`
+	NewtonStg     *NewtonSettings     `yaml:"newton"`
+	PlaygroundStg *PlaygroundSettings `yaml:"playground"`
 
 	Services map[string][]string `yaml:"services"`
 }
@@ -23,6 +24,11 @@ type NewtonSettings struct {
 	Tag        string   `yaml:"tag"`
 	Url        string   `yaml:"url"`
 	Operations []string `yaml:"operations"`
+}
+
+type PlaygroundSettings struct {
+	Tag string `yaml:"tag"`
+	Url string `yaml:"url"`
 }
 
 // LoadFromFile create configuration from file.
@@ -52,7 +58,35 @@ func getDefaultSettings() *Settings {
 
   2) newton - powerful math calculator
   using: n [or N, н, Н] <operation> <expression>
-  example: "n derive x^2+2x"`,
+  example: "n derive x^2+2x"
+  list of available operations:
+    simplify
+    factor
+    derive
+    integrate
+    zeroes
+    tangent
+    area
+    cos
+    sin
+    tan
+    arccos
+    arcsin
+    arctan
+    abs
+    log
+
+  3) playground - write and run go program
+  using: p [or P, п, П] <code>
+  example: p package main
+
+             import (
+               "fmt"
+             )
+
+             func main() {
+               fmt.Println("Hello, World!")
+             }`,
 		WikiStg: &WikiSettings{
 			Tag: "wiki",
 			Url: "https://ru.wikipedia.org/w/api.php?format=json&action=query&prop=extracts&exintro=&explaintext=&titles=",
@@ -60,6 +94,10 @@ func getDefaultSettings() *Settings {
 		NewtonStg: &NewtonSettings{
 			Tag: "newton",
 			Url: "https://newton.now.sh/api/v2/",
+		},
+		PlaygroundStg: &PlaygroundSettings{
+			Tag: "playground",
+			Url: "https://play.golang.org/compile",
 		},
 		Services: map[string][]string{
 			"wiki":   {"w ", "W ", "wiki ", "Wiki ", "в ", "В", "вики ", "Вики "},

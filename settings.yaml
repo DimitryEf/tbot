@@ -6,6 +6,35 @@ help_text: |
   2) newton - powerful math calculator
   using: n [or N, н, Н] <operation> <expression>
   example: "n derive x^2+2x"
+  list of available operations:
+    simplify
+    factor
+    derive
+    integrate
+    zeroes
+    tangent
+    area
+    cos
+    sin
+    tan
+    arccos
+    arcsin
+    arctan
+    abs
+    log
+
+  3) playground - write and run go program
+  using: p [or P, п, П] <code>
+  example: p package main
+
+             import (
+               "fmt"
+             )
+
+             func main() {
+               fmt.Println("Hello, World!")
+             }
+
 
 wiki:
   tag: wiki
@@ -31,6 +60,10 @@ newton:
     - abs
     - log
 
+playground:
+  tag: playground
+  url: https://play.golang.org/compile
+
 # map of services; the service will be started if the message starts with one of the prefixes
 services:
   wiki:
@@ -39,7 +72,7 @@ services:
     - "wiki "
     - "Wiki "
     - "в "
-    - "В"
+    - "В "
     - "вики "
     - "Вики "
   newton:
@@ -48,8 +81,17 @@ services:
     - "newton "
     - "Newton "
     - "н "
-    - "Н"
+    - "Н "
     - "ньютон "
     - "Ньютон "
+  playground:
+    - "p "
+    - "P "
+    - "play "
+    - "Play "
+    - "п "
+    - "П "
+    - "плэй "
+    - "Плэй "
 
 

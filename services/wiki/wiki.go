@@ -8,10 +8,9 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 	"tbot/config"
 )
-
-//https://ru.wikipedia.org/w/api.php?format=json&action=query&prop=extracts&exintro=&explaintext=&titles=java
 
 type Wiki struct {
 	wikiStg *config.WikiSettings
@@ -28,8 +27,8 @@ func (w *Wiki) GetTag() string {
 func (w *Wiki) Query(query string) (string, error) {
 	client := &http.Client{}
 
-	//url := strings.ToLower(query)
-	url := template.URLQueryEscaper(query)
+	url := strings.ReplaceAll(query, " ", "_")
+	url = template.URLQueryEscaper(url)
 	url = fmt.Sprintf("%s%s", w.wikiStg.Url, url)
 	log.Printf("url:%s\n", url)
 	req, err := http.NewRequest("GET", url, nil)
