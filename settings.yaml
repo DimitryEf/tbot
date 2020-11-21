@@ -69,7 +69,7 @@ playground:
 
 markov:
   tag: markov
-  file: /home/dim/projects/tbot/services/markov/platon.txt
+  file: services/markov/platon.txt
 
 # map of services; the service will be started if the message starts with one of the prefixes
 services:
