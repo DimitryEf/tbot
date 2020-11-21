@@ -35,6 +35,9 @@ help_text: |
                fmt.Println("Hello, World!")
              }
 
+  4) markov - generates a sentence from the works of Plato using the Markov algorithm
+  using: m [or M, м, М] <word> <count>
+  example: m человек 10
 
 wiki:
   tag: wiki
@@ -63,6 +66,10 @@ newton:
 playground:
   tag: playground
   url: https://play.golang.org/compile
+
+markov:
+  tag: markov
+  file: /home/dim/projects/tbot/services/markov/platon.txt
 
 # map of services; the service will be started if the message starts with one of the prefixes
 services:
@@ -93,5 +100,13 @@ services:
     - "П "
     - "плэй "
     - "Плэй "
-
+  markov:
+    - "m "
+    - "M "
+    - "markov "
+    - "Markov "
+    - "м "
+    - "М "
+    - "марков "
+    - "Марков "
 

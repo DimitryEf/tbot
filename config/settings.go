@@ -11,6 +11,7 @@ type Settings struct {
 	WikiStg       *WikiSettings       `yaml:"wiki"`
 	NewtonStg     *NewtonSettings     `yaml:"newton"`
 	PlaygroundStg *PlaygroundSettings `yaml:"playground"`
+	MarkovStg     *MarkovSettings     `yaml:"markov"`
 
 	Services map[string][]string `yaml:"services"`
 }
@@ -29,6 +30,11 @@ type NewtonSettings struct {
 type PlaygroundSettings struct {
 	Tag string `yaml:"tag"`
 	Url string `yaml:"url"`
+}
+
+type MarkovSettings struct {
+	Tag  string `yaml:"tag"`
+	File string `yaml:"file"`
 }
 
 // LoadFromFile create configuration from file.
@@ -76,7 +82,7 @@ func getDefaultSettings() *Settings {
     abs
     log
 
-  3) playground - write and run go program
+  3) playground - write, compile and run go code
   using: p [or P, п, П] <code>
   example: p package main
 
@@ -86,7 +92,11 @@ func getDefaultSettings() *Settings {
 
              func main() {
                fmt.Println("Hello, World!")
-             }`,
+             }
+
+  4) markov - generates a sentence from the works of Plato using the Markov algorithm
+  using: m [or M, м, М] <word> <count>
+  example: m человек 10`,
 		WikiStg: &WikiSettings{
 			Tag: "wiki",
 			Url: "https://ru.wikipedia.org/w/api.php?format=json&action=query&prop=extracts&exintro=&explaintext=&titles=",
@@ -99,9 +109,15 @@ func getDefaultSettings() *Settings {
 			Tag: "playground",
 			Url: "https://play.golang.org/compile",
 		},
+		MarkovStg: &MarkovSettings{
+			Tag:  "playground",
+			File: "services/markov/platon.txt",
+		},
 		Services: map[string][]string{
-			"wiki":   {"w ", "W ", "wiki ", "Wiki ", "в ", "В", "вики ", "Вики "},
-			"newton": {"n ", "N ", "newton ", "Newton ", "н ", "Н", "ньютон ", "Ньютон "},
+			"wiki":       {"w ", "W ", "wiki ", "Wiki ", "в ", "В", "вики ", "Вики "},
+			"newton":     {"n ", "N ", "newton ", "Newton ", "н ", "Н", "ньютон ", "Ньютон "},
+			"playground": {"p ", "P ", "play ", "Play ", "п ", "П ", "плэй ", "Плэй "},
+			"markov":     {"m ", "M ", "markov ", "Markov ", "м ", "М ", "марков ", "Марков "},
 		},
 	}
 }

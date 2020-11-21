@@ -90,6 +90,9 @@ func (b *Bot) act(msgText string) (string, error) {
 }
 
 func (b *Bot) chooseAction(serviceTag string, text string) (string, error) {
+	if text == "" {
+		return text, nil
+	}
 	switch serviceTag {
 	case b.cfg.Stg.WikiStg.Tag:
 		return b.takeAction(b.cfg.Stg.WikiStg.Tag, text)
@@ -97,6 +100,8 @@ func (b *Bot) chooseAction(serviceTag string, text string) (string, error) {
 		return b.takeAction(b.cfg.Stg.NewtonStg.Tag, text)
 	case b.cfg.Stg.PlaygroundStg.Tag:
 		return b.takeAction(b.cfg.Stg.PlaygroundStg.Tag, text)
+	case b.cfg.Stg.MarkovStg.Tag:
+		return b.takeAction(b.cfg.Stg.MarkovStg.Tag, text)
 	}
 	return text, nil
 }
