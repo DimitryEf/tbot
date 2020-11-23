@@ -51,6 +51,8 @@ func printLoading(n int, total int) {
 	fmt.Printf("\r " + progressBar + " - " + strconv.Itoa(tantPerCent) + "")
 }
 
+var id int
+
 func addWordToStates(states []State, word string) ([]State, int) {
 	iState := -1
 	for i := 0; i < len(states); i++ {
@@ -64,6 +66,9 @@ func addWordToStates(states []State, word string) ([]State, int) {
 		var tempState State
 		tempState.Word = word
 		tempState.Count = 1
+
+		id++
+		tempState.Id = id
 
 		states = append(states, tempState)
 		iState = len(states) - 1

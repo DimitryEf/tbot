@@ -14,14 +14,22 @@ import (
 
 type Playground struct {
 	playgroundStg *config.PlaygroundSettings
+	ready         bool
 }
 
 func NewPlayground(playgroundStg *config.PlaygroundSettings) *Playground {
-	return &Playground{playgroundStg: playgroundStg}
+	return &Playground{
+		playgroundStg: playgroundStg,
+		ready:         true,
+	}
 }
 
 func (p *Playground) GetTag() string {
 	return p.playgroundStg.Tag
+}
+
+func (p *Playground) IsReady() bool {
+	return p.ready
 }
 
 func (p *Playground) Query(query string) (string, error) {

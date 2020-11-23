@@ -13,16 +13,22 @@ import (
 
 type Newton struct {
 	newtonStg *config.NewtonSettings
+	ready     bool
 }
 
 func NewNewton(newtonStg *config.NewtonSettings) *Newton {
 	return &Newton{
 		newtonStg: newtonStg,
+		ready:     true,
 	}
 }
 
 func (n *Newton) GetTag() string {
 	return n.newtonStg.Tag
+}
+
+func (n *Newton) IsReady() bool {
+	return n.ready
 }
 
 func (n *Newton) Query(query string) (string, error) {

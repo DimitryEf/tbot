@@ -10,18 +10,27 @@ import (
 type Markov struct {
 	markovStg *config.MarkovSettings
 	states    []State
+	ready     bool
 }
 
 func NewMarkov(markovStg *config.MarkovSettings) *Markov {
-	states := initialize(markovStg.File)
-	return &Markov{
+	m := &Markov{
 		markovStg: markovStg,
-		states:    states,
+		ready:     false,
 	}
+
+	go m.load()
+
+	//states := initialize(markovStg.File)
+	return m
 }
 
 func (m *Markov) GetTag() string {
 	return m.markovStg.Tag
+}
+
+func (m *Markov) IsReady() bool {
+	return m.ready
 }
 
 func (m *Markov) Query(query string) (string, error) {

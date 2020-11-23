@@ -14,14 +14,22 @@ import (
 
 type Wiki struct {
 	wikiStg *config.WikiSettings
+	ready   bool
 }
 
 func NewWiki(wikiStg *config.WikiSettings) *Wiki {
-	return &Wiki{wikiStg: wikiStg}
+	return &Wiki{
+		wikiStg: wikiStg,
+		ready:   true,
+	}
 }
 
 func (w *Wiki) GetTag() string {
 	return w.wikiStg.Tag
+}
+
+func (w *Wiki) IsReady() bool {
+	return w.ready
 }
 
 func (w *Wiki) Query(query string) (string, error) {

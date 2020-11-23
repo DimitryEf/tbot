@@ -3,6 +3,7 @@ package services
 type Service interface {
 	GetTag() string
 	Query(query string) (string, error)
+	IsReady() bool
 }
 
 type ServiceManager struct {

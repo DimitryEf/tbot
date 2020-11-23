@@ -107,9 +107,12 @@ func (b *Bot) chooseAction(serviceTag string, text string) (string, error) {
 }
 
 func (b *Bot) takeAction(tag string, text string) (string, error) {
-	result, err := b.sm.Services[tag].Query(text)
-	if err != nil {
-		return "", err
+	if b.sm.Services[tag].IsReady() {
+		result, err := b.sm.Services[tag].Query(text)
+		if err != nil {
+			return "", err
+		}
+		return result, nil
 	}
-	return result, nil
+	return "Not ready yet. Please, waiting some minutes", nil
 }

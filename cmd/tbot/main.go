@@ -6,6 +6,7 @@ import (
 	bot2 "tbot/internal/bot"
 	"tbot/internal/errors"
 	"tbot/services"
+	markov2 "tbot/services/markov"
 	newton2 "tbot/services/newton"
 	playground2 "tbot/services/playground"
 	wiki2 "tbot/services/wiki"
@@ -29,8 +30,8 @@ func main() {
 	wiki := wiki2.NewWiki(cfg.Stg.WikiStg)
 	newton := newton2.NewNewton(cfg.Stg.NewtonStg)
 	playground := playground2.NewPlayground(cfg.Stg.PlaygroundStg)
-	//markov := markov2.NewMarkov(cfg.Stg.MarkovStg)
-	serviceManager := services.NewServiceManager(wiki, newton, playground)
+	markov := markov2.NewMarkov(cfg.Stg.MarkovStg)
+	serviceManager := services.NewServiceManager(wiki, newton, playground, markov)
 
 	// load bot
 	bot, err := bot2.NewBot(cfg, serviceManager)
