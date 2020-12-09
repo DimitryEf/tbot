@@ -72,6 +72,12 @@ func (b *Bot) Start() error {
 }
 
 func (b *Bot) act(msgText string) (string, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("recovered from ", r)
+		}
+	}()
+
 	if len(msgText) < 3 {
 		return msgText, nil
 	}

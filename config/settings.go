@@ -105,7 +105,7 @@ func getDefaultSettings() *Settings {
   example: m человек 10
 
   5) golang - tips and tricks
-  using: go [or Go, го, Го] <word1> <word2> ...
+  using: go [or Go, го, Го] <tag1> <tag2> ...
   example: go extract prefix`,
 		WikiStg: &WikiSettings{
 			Tag: "wiki",

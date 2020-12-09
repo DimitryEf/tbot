@@ -39,6 +39,10 @@ help_text: |
   using: m [or M, м, М] <word> <count>
   example: m человек 10
 
+  5) golang - tips and tricks
+  using: go [or Go, го, Го] <tag1> <tag2> ...
+  example: go extract prefix
+
 wiki:
   tag: wiki
   url: https://ru.wikipedia.org/w/api.php?format=json&action=query&prop=extracts&exintro=&explaintext=&titles=
