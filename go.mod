@@ -11,4 +11,6 @@ require (
 	github.com/tidwall/gjson v1.6.3
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
+	gorm.io/driver/sqlite v1.1.4
+	gorm.io/gorm v1.20.8
 )

@@ -2,11 +2,15 @@ package main
 
 import (
 	"flag"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 	"tbot/config"
 	bot2 "tbot/internal/bot"
 	"tbot/internal/errors"
 	"tbot/services"
-	markov2 "tbot/services/markov"
+	golang2 "tbot/services/golang"
+
+	//markov2 "tbot/services/markov"
 	newton2 "tbot/services/newton"
 	playground2 "tbot/services/playground"
 	wiki2 "tbot/services/wiki"
@@ -26,12 +30,17 @@ func main() {
 	cfg, err := config.NewConfig(*settingsFile, *token)
 	errors.PanicIfErr(err)
 
+	// load db
+	db, err := gorm.Open(sqlite.Open("/home/dim/projects/tbot/databases/golang.db"), &gorm.Config{})
+	errors.PanicIfErr(err)
+
 	// load services
 	wiki := wiki2.NewWiki(cfg.Stg.WikiStg)
 	newton := newton2.NewNewton(cfg.Stg.NewtonStg)
 	playground := playground2.NewPlayground(cfg.Stg.PlaygroundStg)
-	markov := markov2.NewMarkov(cfg.Stg.MarkovStg)
-	serviceManager := services.NewServiceManager(wiki, newton, playground, markov)
+	//markov := markov2.NewMarkov(cfg.Stg.MarkovStg)
+	golang := golang2.NewGolang(cfg.Stg.GolangStg, db)
+	serviceManager := services.NewServiceManager(wiki, newton, playground, golang)
 
 	// load bot
 	bot, err := bot2.NewBot(cfg, serviceManager)

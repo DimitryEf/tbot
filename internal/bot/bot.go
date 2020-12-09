@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"fmt"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"log"
 	"strings"
@@ -51,6 +52,7 @@ func (b *Bot) Start() error {
 		msg.Text, err = b.act(msg.Text)
 		if err != nil {
 			log.Printf("error: %v", err)
+			msg.Text = fmt.Sprintf("error: %v", err)
 		}
 
 		if msg.Text == "" {
@@ -102,6 +104,8 @@ func (b *Bot) chooseAction(serviceTag string, text string) (string, error) {
 		return b.takeAction(b.cfg.Stg.PlaygroundStg.Tag, text)
 	case b.cfg.Stg.MarkovStg.Tag:
 		return b.takeAction(b.cfg.Stg.MarkovStg.Tag, text)
+	case b.cfg.Stg.GolangStg.Tag:
+		return b.takeAction(b.cfg.Stg.GolangStg.Tag, text)
 	}
 	return text, nil
 }

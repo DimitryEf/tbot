@@ -71,6 +71,10 @@ markov:
   tag: markov
   file: services/markov/platon.txt
 
+golang:
+  tag: golang
+  file: databases/golang.db
+
 # map of services; the service will be started if the message starts with one of the prefixes
 services:
   wiki:
@@ -109,4 +113,12 @@ services:
     - "М "
     - "марков "
     - "Марков "
-
+  golang:
+    - "go "
+    - "Go "
+    - "golang "
+    - "Golang "
+    - "го "
+    - "Го "
+    - "голанг "
+    - "Голанг "

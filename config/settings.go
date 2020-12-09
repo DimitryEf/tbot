@@ -12,6 +12,7 @@ type Settings struct {
 	NewtonStg     *NewtonSettings     `yaml:"newton"`
 	PlaygroundStg *PlaygroundSettings `yaml:"playground"`
 	MarkovStg     *MarkovSettings     `yaml:"markov"`
+	GolangStg     *GolangSettings     `yaml:"golang"`
 
 	Services map[string][]string `yaml:"services"`
 }
@@ -33,6 +34,11 @@ type PlaygroundSettings struct {
 }
 
 type MarkovSettings struct {
+	Tag  string `yaml:"tag"`
+	File string `yaml:"file"`
+}
+
+type GolangSettings struct {
 	Tag  string `yaml:"tag"`
 	File string `yaml:"file"`
 }
@@ -96,7 +102,11 @@ func getDefaultSettings() *Settings {
 
   4) markov - generates a sentence from the works of Plato using the Markov algorithm
   using: m [or M, м, М] <word> <count>
-  example: m человек 10`,
+  example: m человек 10
+
+  5) golang - tips and tricks
+  using: go [or Go, го, Го] <word1> <word2> ...
+  example: go extract prefix`,
 		WikiStg: &WikiSettings{
 			Tag: "wiki",
 			Url: "https://ru.wikipedia.org/w/api.php?format=json&action=query&prop=extracts&exintro=&explaintext=&titles=",
@@ -110,14 +120,19 @@ func getDefaultSettings() *Settings {
 			Url: "https://play.golang.org/compile",
 		},
 		MarkovStg: &MarkovSettings{
-			Tag:  "playground",
+			Tag:  "markov",
 			File: "services/markov/platon.txt",
+		},
+		GolangStg: &GolangSettings{
+			Tag:  "golang",
+			File: "databases/golang.db",
 		},
 		Services: map[string][]string{
 			"wiki":       {"w ", "W ", "wiki ", "Wiki ", "в ", "В", "вики ", "Вики "},
 			"newton":     {"n ", "N ", "newton ", "Newton ", "н ", "Н", "ньютон ", "Ньютон "},
 			"playground": {"p ", "P ", "play ", "Play ", "п ", "П ", "плэй ", "Плэй "},
 			"markov":     {"m ", "M ", "markov ", "Markov ", "м ", "М ", "марков ", "Марков "},
+			"golang":     {"go ", "Go ", "golang ", "Golang ", "го ", "Го ", "голанг ", "Голанг "},
 		},
 	}
 }
