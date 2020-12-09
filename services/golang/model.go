@@ -14,6 +14,13 @@ type Topic struct {
 	Tags    []Tag `gorm:"many2many:topic_tags;"`
 }
 
+//type TopicTags struct {
+//	gorm.Model
+//	Id int `gorm:"primaryKey"`
+//	Topics []Topic `gorm:"many2many:topic_tags;"`
+//	Tags    []Tag `gorm:"many2many:topic_tags;"`
+//}
+
 type Tag struct {
 	gorm.Model
 	Id     int     `gorm:"primaryKey"`
@@ -21,7 +28,7 @@ type Tag struct {
 	Topics []Topic `gorm:"many2many:topic_tags;"`
 }
 
-func ConvertQueryToTopic(query string) Topic {
+func ConvertQueryToTopic(query string) *Topic {
 	topic := Topic{}
 	title := query[:strings.Index(query, "\n")]
 	topic.Title = title
@@ -37,5 +44,5 @@ func ConvertQueryToTopic(query string) Topic {
 	query = query[len(tagsStr):]
 	code := query[5:]
 	topic.Code = code
-	return topic
+	return &topic
 }

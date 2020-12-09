@@ -17,27 +17,12 @@ type Golang struct {
 func NewGolang(golangStg *config.GolangSettings, db *gorm.DB) *Golang {
 	err := db.AutoMigrate(&Topic{}, &Tag{})
 	errors.PanicIfErr(err)
-	var topics []Topic
-	topics = append(topics, ConvertQueryToTopic("Get executable dir\n(tags: get executable dir)\n---\n\nex, err := os.Executable()\ndir := filepath.Dir(ex)\nfmt.Println(\"dir:\", dir)\n"))
-	topics = append(topics, ConvertQueryToTopic("Extract beginning of string (prefix)\n(tags: extract beginning string prefix)\n---\n\nt := string([]rune(s)[:5])"))
-	topics = append(topics, ConvertQueryToTopic("Extract string suffix\n(tags: extract string suffix)\n---\n\nt := string([]rune(s)[len([]rune(s))-5:])"))
-	topics = append(topics, ConvertQueryToTopic("Exec other program\n(tags: exec program)\n---\n\nerr := exec.Command(\"program\", \"arg1\", \"arg2\").Run()"))
-	db.Create(&topics)
+	db.Create(ConvertQueryToTopic("Get executable dir\n(tags: get executable dir)\n---\n\nex, err := os.Executable()\ndir := filepath.Dir(ex)\nfmt.Println(\"dir:\", dir)\n"))
+	db.Create(ConvertQueryToTopic("Extract beginning of string (prefix)\n(tags: extract beginning string prefix)\n---\n\nt := string([]rune(s)[:5])"))
+	db.Create(ConvertQueryToTopic("Extract string suffix\n(tags: extract string suffix)\n---\n\nt := string([]rune(s)[len([]rune(s))-5:])"))
+	db.Create(ConvertQueryToTopic("Exec other program\n(tags: exec program)\n---\n\nerr := exec.Command(\"program\", \"arg1\", \"arg2\").Run()"))
 
-	//	topic := Topic{
-	//		Title: "Get executable dir path",
-	//		Code: `ex, err := os.Executable()
-	//dir := filepath.Dir(ex)
-	//fmt.Println("dir:", dir)`,
-	//		Checked: false,
-	//		Tags: []Tag{
-	//			{Name: "get"},
-	//			{Name: "executable"},
-	//			{Name: "dir"},
-	//			{Name: "path"},
-	//		},
-	//	}
-	//	db.Create(&topic)
+	//TODO do not do []Topic and then Create(&topics) the result in topic_tags will be bad
 
 	return &Golang{
 		golangStg: golangStg,
@@ -58,7 +43,7 @@ func (n *Golang) Query(query string) (string, error) {
 	if strings.HasPrefix(query, "+") {
 		query = query[1:]
 		newTopic := ConvertQueryToTopic(query)
-		n.db.Create(&newTopic)
+		n.db.Create(newTopic)
 		tagsStr := ""
 		for _, tag := range newTopic.Tags {
 			tagsStr += " " + tag.Name
@@ -68,10 +53,12 @@ func (n *Golang) Query(query string) (string, error) {
 
 	queryTags := strings.Split(query, " ")
 	var tags []Tag
+	var tagsWhere []string
 	for _, tag := range queryTags {
-		tags = append(tags, Tag{Name: tag})
+		//tags = append(tags, Tag{Name: tag})
+		tagsWhere = append(tagsWhere, tag)
 	}
-	n.db.Find(&tags)
+	n.db.Where("name IN ?", tagsWhere).Find(&tags)
 
 	var topics []Topic
 	n.db.Model(&tags).Association("Topics").Find(&topics)
