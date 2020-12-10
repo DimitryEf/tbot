@@ -49,6 +49,10 @@ func (b *Bot) Start() error {
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
 		//msg.ReplyToMessageID = update.Message.MessageID
 
+		msg.ParseMode = "markdown"
+
+		//b.bot.Send(msg)
+
 		msg.Text, err = b.act(msg.Text)
 		if err != nil {
 			log.Printf("error: %v", err)

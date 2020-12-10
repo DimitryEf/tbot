@@ -14,6 +14,17 @@ type Golang struct {
 }
 
 func NewGolang(golangStg *config.GolangSettings, db *gorm.DB) *Golang {
+
+	initialize(db)
+
+	return &Golang{
+		golangStg: golangStg,
+		db:        db,
+		ready:     true,
+	}
+}
+
+func initialize(db *gorm.DB) {
 	//err := db.AutoMigrate(&Topic{}, &Tag{})
 	//errors.PanicIfErr(err)
 	//db.Create(ConvertQueryToTopic("Get executable dir\n(tags: get executable dir)\n---\n\nex, err := os.Executable()\ndir := filepath.Dir(ex)\nfmt.Println(\"dir:\", dir)\n"))
@@ -22,14 +33,6 @@ func NewGolang(golangStg *config.GolangSettings, db *gorm.DB) *Golang {
 	//db.Create(ConvertQueryToTopic("Exec other program\n(tags: exec program)\n---\n\nerr := exec.Command(\"program\", \"arg1\", \"arg2\").Run()"))
 
 	//db.Create(ConvertQueryToTopic("Exec other program\n(tags: exec program)\n---\n\nerr := exec.Command(\"program\", \"arg1\", \"arg2\").Run()"))
-
-	//TODO do not do []Topic and then Create(&topics) the result in topic_tags will be bad
-
-	return &Golang{
-		golangStg: golangStg,
-		db:        db,
-		ready:     true,
-	}
 }
 
 func (n *Golang) GetTag() string {
@@ -41,6 +44,7 @@ func (n *Golang) IsReady() bool {
 }
 
 func (n *Golang) Query(query string) (string, error) {
+	formatStr := "*%s*\n_(tags:%v)_\n---\n`%s`"
 	if strings.HasPrefix(query, "+") {
 		query = query[1:]
 		newTopic := ConvertQueryToTopic(query)
@@ -49,7 +53,24 @@ func (n *Golang) Query(query string) (string, error) {
 		for _, tag := range newTopic.Tags {
 			tagsStr += " " + tag.Name
 		}
-		return fmt.Sprintf("%s\n(tags:%v)\n---\n%s", newTopic.Title, tagsStr, newTopic.Code), nil
+		return fmt.Sprintf(formatStr, newTopic.Title, tagsStr, newTopic.Code), nil
+	}
+
+	if strings.HasPrefix(query, "*") {
+		var topics []Topic
+		n.db.Find(&topics)
+		//var topic Topic
+		n.db.Model(&topics).Association("Tags").Find(&topics)
+		res := ""
+		for _, topic := range topics {
+			n.db.Model(&topic).Association("Tags").Find(&topic.Tags)
+			topicTags := ""
+			for _, tag := range topic.Tags {
+				topicTags += " " + tag.Name
+			}
+			res += "\n\n===\n" + fmt.Sprintf(formatStr, topic.Title, topicTags, topic.Code)
+		}
+		return res, nil
 	}
 
 	queryTags := strings.Split(query, " ")
@@ -74,7 +95,7 @@ func (n *Golang) Query(query string) (string, error) {
 		for _, tag := range topic.Tags {
 			topicTags += " " + tag.Name
 		}
-		res += "\n\n***\n" + fmt.Sprintf("%s\n(tags:%v)\n---\n%s", topic.Title, topicTags, topic.Code)
+		res += "\n\n===\n" + fmt.Sprintf(formatStr, topic.Title, topicTags, topic.Code)
 	}
 	return res, nil
 }
