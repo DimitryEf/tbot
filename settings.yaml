@@ -35,11 +35,7 @@ help_text: |
                fmt.Println("Hello, World!")
              }
 
-  4) markov - generates a sentence from the works of Plato using the Markov algorithm
-  using: m [or M, м, М] <word> <count>
-  example: m человек 10
-
-  5) golang - tips and tricks
+  4) golang - tips and tricks
   using: go [or Go, го, Го] <tag1> <tag2> ...
   example: go extract prefix
 
@@ -108,15 +104,15 @@ services:
     - "П "
     - "плэй "
     - "Плэй "
-  markov:
-    - "m "
-    - "M "
-    - "markov "
-    - "Markov "
-    - "м "
-    - "М "
-    - "марков "
-    - "Марков "
+#  markov:
+#    - "m "
+#    - "M "
+#    - "markov "
+#    - "Markov "
+#    - "м "
+#    - "М "
+#    - "марков "
+#    - "Марков "
   golang:
     - "go "
     - "Go "
