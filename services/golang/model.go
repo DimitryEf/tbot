@@ -46,3 +46,11 @@ func ConvertQueryToTopic(query string) *Topic {
 	topic.Code = code
 	return &topic
 }
+
+func (t Topic) GetTagsString() string {
+	res := ""
+	for _, tag := range t.Tags {
+		res += " " + tag.Name
+	}
+	return res
+}

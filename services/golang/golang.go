@@ -17,7 +17,7 @@ type Golang struct {
 
 func NewGolang(golangStg *config.GolangSettings, db *gorm.DB) *Golang {
 
-	initialize(db)
+	//initialize(db)
 
 	return &Golang{
 		golangStg: golangStg,
@@ -30,20 +30,31 @@ func initialize(db *gorm.DB) {
 	err := db.Debug().AutoMigrate(&Topic{}, &Tag{})
 	errors.PanicIfErr(err)
 
-	topic := ConvertQueryToTopic("Get executable dir\n(tags: get executable dir)\n---\n\nex, err := os.Executable()\ndir := filepath.Dir(ex)\nfmt.Println(\"dir:\", dir)\n")
+	create(db, "Get executable dir\n(tags: get executable dir)\n---\n\nex, err := os.Executable()\ndir := filepath.Dir(ex)\nfmt.Println(\"dir:\", dir)\n")
+	create(db, "Extract beginning of string (prefix)\n(tags: extract beginning string prefix)\n---\n\nt := string([]rune(s)[:5])")
+	create(db, "Extract string suffix\n(tags: extract string suffix)\n---\n\nt := string([]rune(s)[len([]rune(s))-5:])")
+	create(db, "Exec other program\n(tags: exec program)\n---\n\nerr := exec.Command(\"program\", \"arg1\", \"arg2\").Run()")
+	create(db, "Telegram message markdown\n(tags: telegram message markdown)\n---\n\n*полужирный*\n_курсив_\n[ссылка](http://www.example.com/)\n`строчный моноширинный`\n```text\nблочный моноширинный (можно писать код)\n```\n\n[https://github.com/go-telegram-bot-api/telegram-bot-api](import \"github.com/go-telegram-bot-api/telegram-bot-api\")\n\nmsg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)\nmsg.ParseMode = \"markdown\" //msg.ParseMode = tgbotapi.ModeMarkdown")
+	create(db, "Telegram message html\n(tags: telegram message html)\n---\n\n<b>полужирный</b>, <strong>полужирный</strong>\n<i>курсив</i>\n<a href=\"http://www.example.com/\">ссылка</a>\n<code>строчный моноширинный</code>\n<pre>блочный моноширинный (можно писать код)</pre>\n\n[https://github.com/go-telegram-bot-api/telegram-bot-api](import \"github.com/go-telegram-bot-api/telegram-bot-api\")\n\nmsg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)\nmsg.ParseMode = \"HTML\" //msg.ParseMode = tgbotapi.ModeHTML")
+	create(db, "Iterate over map entries ordered by keys\n(tags: iterate map order key)\n---\n\nkeys := make([]string, 0, len(mymap))\nfor k := range mymap {\n        keys = append(keys, k)\n}\nsort.Strings(keys)\nfor _, k := range keys {\n        x := mymap[k]\n        fmt.Println(\"Key =\", k, \", Value =\", x)\n}\n")
+	create(db, "Iterate over map entries ordered by values\n(tags: iterate map order value)\n---\n\ntype entry struct {\n        key   string\n        value int\n}\nentries := make([]entry, 0, len(mymap))\nfor k, x := range mymap {\n        entries = append(entries, entry{key: k, value: x})\n}\nsort.Slice(entries, func(i, j int) bool {\n        return entries[i].value < entries[j].value\n})\nfor _, e := range entries {\n        fmt.Println(\"Key =\", e.key, \", Value =\", e.value)\n}")
+	create(db, "Slice to set\n(tags: slice set)\n---\n\ny := make(map[T]struct{}, len(x))\nfor _, v := range x {\n        y[v] = struct{}{}\n}")
+	create(db, "Deduplicate slice\n(tags: deduplicate slice remove duplicate)\n---\n\nseen := make(map[T]bool)\nj := 0\nfor _, v := range x {\n        if !seen[v] {\n                x[j] = v\n                j++\n                seen[v] = true\n        }\n}\nfor i := j; i < len(x); i++ {\n        x[i] = nil\n}\nx = x[:j]")
+	create(db, "Shuffle a slice\n(tags: slice shuffle)\n---\n\ny := make(map[T]struct{}, len(x))\nfor _, v := range x {\n        y[v] = struct{}{}\n}")
+	create(db, "Sort slice asc\n(tags: sort slice asc)\n---\n\nsort.Slice(items, func(i, j int) bool {\n        return items[i].p < items[j].p\n})")
+	create(db, "Sort slice desc\n(tags: sort slice desc)\n---\n\nsort.Slice(items, func(i, j int) bool {\n        return items[i].p > items[j].p\n})")
+	create(db, "Remove item from slice by index\n(tags: remove item slice index)\n---\n\nitems = append(items[:i], items[i+1:]...)")
+	create(db, "Graph with adjacency lists\n(tags: graph struct)\n---\n\ntype Vertex struct{\n        Id int\n        Label string\n        Neighbours map[*Vertex]bool\n}\ntype Graph []*Vertex")
+	create(db, "Reverse a string\n(tags: string reverse)\n---\n\nrunes := []rune(s)\nfor i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {\n   runes[i], runes[j] = runes[j], runes[i]\n}\nt := string(runes)")
+	create(db, "Insert item in slice\n(tags: insert item slice)\n---\n\ns = append(s, 0)\ncopy(s[i+1:], s[i:])\ns[i] = x")
+	create(db, "Filter slice\n(tags: filter slice)\n---\n\ny := make([]T, 0, len(x))\nfor _, v := range x{\n        if p(v){\n                y = append(y, v)\n        }\n}")
+	create(db, "File content to string\n(tags: file content string)\n---\n\nb, err := ioutil.ReadFile(f)\nlines := string(b)")
+
+}
+
+func create(db *gorm.DB, query string) Topic {
+	topic := ConvertQueryToTopic(query)
 	tags := topic.Tags
-	db.Debug().Create(&tags)
-	topic.Tags = tags
-	db.Debug().Create(topic)
-
-	topic = ConvertQueryToTopic("Extract beginning of string (prefix)\n(tags: extract beginning string prefix)\n---\n\nt := string([]rune(s)[:5])")
-	tags = topic.Tags
-	db.Debug().Create(&tags)
-	topic.Tags = tags
-	db.Debug().Create(topic)
-
-	topic = ConvertQueryToTopic("Extract string suffix\n(tags: extract string suffix)\n---\n\nt := string([]rune(s)[len([]rune(s))-5:])")
-	tags = topic.Tags
 	for i, tag := range tags {
 		db.Debug().Where("name = ?", tag.Name).Find(&tag)
 		if tag.Id == 0 {
@@ -53,24 +64,7 @@ func initialize(db *gorm.DB) {
 	}
 	topic.Tags = tags
 	db.Debug().Create(topic)
-
-	//db.Debug().Create(ConvertQueryToTopic("Exec other program\n(tags: exec program)\n---\n\nerr := exec.Command(\"program\", \"arg1\", \"arg2\").Run()"))
-	//db.Debug().Create(ConvertQueryToTopic("Telegram message markdown\n(tags: telegram message markdown)\n---\n\n*полужирный*\n_курсив_\n[ссылка](http://www.example.com/)\n`строчный моноширинный`\n```text\nблочный моноширинный (можно писать код)\n```\n\n[https://github.com/go-telegram-bot-api/telegram-bot-api](import \"github.com/go-telegram-bot-api/telegram-bot-api\")\n\nmsg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)\nmsg.ParseMode = \"markdown\" //msg.ParseMode = tgbotapi.ModeMarkdown"))
-	//db.Debug().Create(ConvertQueryToTopic("Telegram message html\n(tags: telegram message html)\n---\n\n<b>полужирный</b>, <strong>полужирный</strong>\n<i>курсив</i>\n<a href=\"http://www.example.com/\">ссылка</a>\n<code>строчный моноширинный</code>\n<pre>блочный моноширинный (можно писать код)</pre>\n\n[https://github.com/go-telegram-bot-api/telegram-bot-api](import \"github.com/go-telegram-bot-api/telegram-bot-api\")\n\nmsg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)\nmsg.ParseMode = \"HTML\" //msg.ParseMode = tgbotapi.ModeHTML"))
-	//db.Debug().Create(ConvertQueryToTopic("Iterate over map entries ordered by keys\n(tags: iterate map order key)\n---\n\nkeys := make([]string, 0, len(mymap))\nfor k := range mymap {\n        keys = append(keys, k)\n}\nsort.Strings(keys)\nfor _, k := range keys {\n        x := mymap[k]\n        fmt.Println(\"Key =\", k, \", Value =\", x)\n}\n"))
-	//db.Debug().Create(ConvertQueryToTopic("Iterate over map entries ordered by values\n(tags: iterate map order value)\n---\n\ntype entry struct {\n        key   string\n        value int\n}\nentries := make([]entry, 0, len(mymap))\nfor k, x := range mymap {\n        entries = append(entries, entry{key: k, value: x})\n}\nsort.Slice(entries, func(i, j int) bool {\n        return entries[i].value < entries[j].value\n})\nfor _, e := range entries {\n        fmt.Println(\"Key =\", e.key, \", Value =\", e.value)\n}"))
-	//db.Debug().Create(ConvertQueryToTopic("Slice to set\n(tags: slice set)\n---\n\ny := make(map[T]struct{}, len(x))\nfor _, v := range x {\n        y[v] = struct{}{}\n}"))
-	//db.Debug().Create(ConvertQueryToTopic("Deduplicate slice\n(tags: deduplicate slice remove duplicate)\n---\n\nseen := make(map[T]bool)\nj := 0\nfor _, v := range x {\n        if !seen[v] {\n                x[j] = v\n                j++\n                seen[v] = true\n        }\n}\nfor i := j; i < len(x); i++ {\n        x[i] = nil\n}\nx = x[:j]"))
-	//db.Debug().Create(ConvertQueryToTopic("Shuffle a slice\n(tags: slice shuffle)\n---\n\ny := make(map[T]struct{}, len(x))\nfor _, v := range x {\n        y[v] = struct{}{}\n}"))
-	//db.Debug().Create(ConvertQueryToTopic("Sort slice asc\n(tags: sort slice asc)\n---\n\nsort.Slice(items, func(i, j int) bool {\n        return items[i].p < items[j].p\n})"))
-	//db.Debug().Create(ConvertQueryToTopic("Sort slice desc\n(tags: sort slice desc)\n---\n\nsort.Slice(items, func(i, j int) bool {\n        return items[i].p > items[j].p\n})"))
-	//db.Debug().Create(ConvertQueryToTopic("Remove item from slice by index\n(tags: remove item slice index)\n---\n\nitems = append(items[:i], items[i+1:]...)"))
-	//db.Debug().Create(ConvertQueryToTopic("Graph with adjacency lists\n(tags: graph struct)\n---\n\ntype Vertex struct{\n        Id int\n        Label string\n        Neighbours map[*Vertex]bool\n}\ntype Graph []*Vertex"))
-	//db.Debug().Create(ConvertQueryToTopic("Reverse a string\n(tags: string reverse)\n---\n\nrunes := []rune(s)\nfor i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {\n   runes[i], runes[j] = runes[j], runes[i]\n}\nt := string(runes)"))
-	//db.Debug().Create(ConvertQueryToTopic("Insert item in slice\n(tags: insert item slice)\n---\n\ns = append(s, 0)\ncopy(s[i+1:], s[i:])\ns[i] = x"))
-	//db.Debug().Create(ConvertQueryToTopic("Filter slice\n(tags: filter slice)\n---\n\ny := make([]T, 0, len(x))\nfor _, v := range x{\n        if p(v){\n                y = append(y, v)\n        }\n}"))
-	//db.Debug().Create(ConvertQueryToTopic("File content to string\n(tags: file content string)\n---\n\nb, err := ioutil.ReadFile(f)\nlines := string(b)"))
-
+	return *topic
 }
 
 func (n *Golang) GetTag() string {
@@ -85,13 +79,8 @@ func (n *Golang) Query(query string) (string, error) {
 	formatStr := "*%s*\n_(tags:%v)_\n---\n`%s`"
 	if strings.HasPrefix(query, "+") {
 		query = query[1:]
-		newTopic := ConvertQueryToTopic(query)
-		n.db.Create(newTopic)
-		tagsStr := ""
-		for _, tag := range newTopic.Tags {
-			tagsStr += " " + tag.Name
-		}
-		return fmt.Sprintf(formatStr, newTopic.Title, tagsStr, newTopic.Code), nil
+		newTopic := create(n.db, query)
+		return fmt.Sprintf(formatStr, newTopic.Title, newTopic.GetTagsString(), newTopic.Code), nil
 	}
 
 	if strings.HasPrefix(query, "*") {
@@ -102,11 +91,7 @@ func (n *Golang) Query(query string) (string, error) {
 		res := ""
 		for _, topic := range topics {
 			n.db.Model(&topic).Association("Tags").Find(&topic.Tags)
-			topicTags := ""
-			for _, tag := range topic.Tags {
-				topicTags += " " + tag.Name
-			}
-			res += "\n\n===\n" + fmt.Sprintf(formatStr, topic.Title, topicTags, topic.Code)
+			res += "\n\n===\n" + fmt.Sprintf(formatStr, topic.Title, topic.GetTagsString(), topic.Code)
 		}
 		return res, nil
 	}
@@ -150,11 +135,7 @@ func (n *Golang) Query(query string) (string, error) {
 
 	res := ""
 	for _, val := range matches {
-		topicTags := ""
-		for _, tag := range val.topic.Tags {
-			topicTags += " " + tag.Name
-		}
-		res += "\n\n===\n" + fmt.Sprintf(formatStr, val.topic.Title, topicTags, val.topic.Code)
+		res += "\n\n===\n" + fmt.Sprintf(formatStr, val.topic.Title, val.topic.GetTagsString(), val.topic.Code)
 	}
 
 	return res, nil
