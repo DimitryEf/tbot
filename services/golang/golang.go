@@ -90,7 +90,7 @@ func initialize(db *gorm.DB) {
 	create(db, "Progress bar\n(tags: progress bar)\n---\n\nfunc printProgressBar(n int, total int) {\n    var bar []string\n    tantPerFourty := int((float64(n) / float64(total)) * 40)\n    tantPerCent := int((float64(n) / float64(total)) * 100)\n    for i := 0; i < tantPerFourty; i++ {\n        bar = append(bar, \"█\")\n    }\n    progressBar := strings.Join(bar, \"\")\n    fmt.Printf(\"\\r \" + progressBar + \" - \" + strconv.Itoa(tantPerCent) + \"\")\n}")
 	create(db, "Create a zip archive\n(tags: create zip archive)\n---\n\nbuf := new(bytes.Buffer)\nw := zip.NewWriter(buf)\nfor _, filename := range list {\n    input, err := os.Open(filename)\n    output, err := w.Create(filename)\n    _, err = io.Copy(output, input)\n}\nerr := w.Close()\nerr = ioutil.WriteFile(name, buf.Bytes(), 0777)")
 	create(db, "Slice intersection\n(tags: slice intersection)\n---\n\nseta := make(map[T]bool, len(a))\nfor _, x := range a {\n    seta[x] = true\n}\nsetb := make(map[T]bool, len(a))\nfor _, y := range b {\n    setb[y] = true\n}\n\nvar c []T\nfor x := range seta {\n    if setb[x] {\n        c = append(c, x)\n    }\n}")
-	create(db, "Replace multiple spaces with single space\n(tags: replace space)\n---\n\nwhitespaces := regexp.MustCompile(`\\s+`)\nt := whitespaces.ReplaceAllString(s, \" \")")
+	create(db, "Replace multiple spaces with single space\n(tags: replace space)\n---\n\nwhitespaces := regexp.MustCompile('\\s+')\nt := whitespaces.ReplaceAllString(s, \" \")")
 	create(db, "Create a tuple value\n(tags: create tuple interface)\n---\n\nt := []interface{}{\n    2.5,\n    \"hello\",\n    make(chan int),\n}")
 	create(db, "Remove all non-digits chars\n(tags: remove digit char)\n---\n\nre := regexp.MustCompile(\"[^\\\\d]\")\nt := re.ReplaceAllLiteralString(s, \"\")")
 	create(db, "Add element to the beginning of the slice\n(tags: add beginning slice)\n---\n\nitems = append([]T{x}, items...)")
@@ -148,7 +148,11 @@ func (n *Golang) Query(query string) (string, error) {
 		for _, topic := range topics {
 			n.db.Model(&topic).Association("Tags").Find(&topic.Tags)
 			res += "\n\n===\n" + fmt.Sprintf(formatStr, topic.Title, topic.GetTagsString(), topic.Code)
+			if len(res) > 4096 {
+				break
+			}
 		}
+		res = res[:strings.LastIndex(res, "===")]
 		return res, nil
 	}
 

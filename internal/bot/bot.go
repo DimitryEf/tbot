@@ -70,6 +70,7 @@ func (b *Bot) Start() error {
 		_, err = b.bot.Send(msg)
 		if err != nil {
 			log.Printf("error: %v", err)
+			log.Println("text:", msg.Text)
 		}
 	}
 	return nil
