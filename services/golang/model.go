@@ -35,7 +35,7 @@ func ConvertQueryToTopic(query string) *Topic {
 	query = query[len(title):]
 	tagsStr := query[:strings.Index(query, "---")]
 	tagsStr2 := tagsStr[len("(tags:  "):strings.Index(tagsStr, ")")]
-	tags := strings.Split(tagsStr2, " ")
+	tags := strings.Split(strings.ToLower(tagsStr2), " ")
 	for _, tag := range tags {
 		topic.Tags = append(topic.Tags, Tag{
 			Name: tag,
