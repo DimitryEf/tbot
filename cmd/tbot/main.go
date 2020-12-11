@@ -4,11 +4,15 @@ import (
 	"flag"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+	"log"
+	"os"
 	"tbot/config"
 	bot2 "tbot/internal/bot"
 	"tbot/internal/errors"
 	"tbot/services"
 	golang2 "tbot/services/golang"
+	"time"
 
 	//markov2 "tbot/services/markov"
 	newton2 "tbot/services/newton"
@@ -31,7 +35,16 @@ func main() {
 	errors.PanicIfErr(err)
 
 	// load db
-	db, err := gorm.Open(sqlite.Open("/home/dim/projects/tbot/databases/golang.db"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("/home/dim/projects/tbot/databases/golang.db"), &gorm.Config{
+		Logger: logger.New(
+			log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
+			logger.Config{
+				SlowThreshold: time.Second,   // Slow SQL threshold
+				LogLevel:      logger.Silent, // Log level
+				Colorful:      false,         // Disable color
+			},
+		),
+	})
 	errors.PanicIfErr(err)
 
 	// load services
