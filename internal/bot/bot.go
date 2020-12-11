@@ -49,7 +49,7 @@ func (b *Bot) Start() error {
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
 		//msg.ReplyToMessageID = update.Message.MessageID
 
-		msg.ParseMode = "markdown"
+		msg.ParseMode = tgbotapi.ModeMarkdown
 
 		//b.bot.Send(msg)
 
