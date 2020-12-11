@@ -17,7 +17,7 @@ type Golang struct {
 
 func NewGolang(golangStg *config.GolangSettings, db *gorm.DB) *Golang {
 
-	//initialize(db)
+	initialize(db)
 
 	return &Golang{
 		golangStg: golangStg,
