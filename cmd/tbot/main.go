@@ -2,10 +2,13 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"html"
 	"log"
+	"net/http"
 	"os"
 	"tbot/config"
 	bot2 "tbot/internal/bot"
@@ -59,6 +62,11 @@ func main() {
 	// load bot
 	bot, err := bot2.NewBot(cfg, serviceManager)
 	errors.PanicIfErr(err)
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Hello, %q", html.EscapeString(r.URL.Path))
+	})
+	go log.Fatal(http.ListenAndServe(":80", nil))
 
 	// start bot to listen chat messages
 	err = bot.Start()
