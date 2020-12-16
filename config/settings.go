@@ -65,7 +65,7 @@ func getDefaultSettings() *Settings {
 	return &Settings{
 		HelpText: `
   1) wiki - find some title in wikipedia
-  using: w [or W, в, В] <some_name>
+  using: w [or W, в, В] <name>
   example: "w go"
 
   2) newton - powerful math calculator

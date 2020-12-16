@@ -2,10 +2,18 @@ package main
 
 import (
 	"flag"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+	"log"
+	"os"
 	"tbot/config"
 	bot2 "tbot/internal/bot"
 	"tbot/internal/errors"
 	"tbot/services"
+	golang2 "tbot/services/golang"
+	"time"
+
 	//markov2 "tbot/services/markov"
 	newton2 "tbot/services/newton"
 	playground2 "tbot/services/playground"
@@ -28,16 +36,16 @@ func main() {
 
 	// load db
 	//db, err := gorm.Open(sqlite.Open("databases/golang.db"), &gorm.Config{
-	//db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{
-	//	Logger: logger.New(
-	//		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
-	//		logger.Config{
-	//			SlowThreshold: time.Second,   // Slow SQL threshold
-	//			LogLevel:      logger.Silent, // Log level
-	//			Colorful:      false,         // Disable color
-	//		},
-	//	),
-	//})
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{
+		Logger: logger.New(
+			log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
+			logger.Config{
+				SlowThreshold: time.Second,   // Slow SQL threshold
+				LogLevel:      logger.Silent, // Log level
+				Colorful:      false,         // Disable color
+			},
+		),
+	})
 	errors.PanicIfErr(err)
 
 	// load services
@@ -45,8 +53,8 @@ func main() {
 	newton := newton2.NewNewton(cfg.Stg.NewtonStg)
 	playground := playground2.NewPlayground(cfg.Stg.PlaygroundStg)
 	//markov := markov2.NewMarkov(cfg.Stg.MarkovStg)
-	//golang := golang2.NewGolang(cfg.Stg.GolangStg, db)
-	serviceManager := services.NewServiceManager(wiki, newton, playground)
+	golang := golang2.NewGolang(cfg.Stg.GolangStg, db)
+	serviceManager := services.NewServiceManager(wiki, newton, playground, golang)
 
 	// load bot
 	bot, err := bot2.NewBot(cfg, serviceManager)
