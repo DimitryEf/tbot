@@ -67,6 +67,7 @@ func main() {
 	errors.PanicIfErr(err)
 	http.Handle("/", http.FileServer(http.Dir("./databases")))
 	go func() {
+		log.Println("port", addr)
 		log.Fatal(http.ListenAndServe(addr, nil))
 	}()
 
@@ -76,6 +77,7 @@ func main() {
 }
 
 func determineListenAddress() (string, error) {
+	//return ":8081", nil
 	port := os.Getenv("PORT")
 	if port == "" {
 		return "", fmt.Errorf("$PORT not set")
