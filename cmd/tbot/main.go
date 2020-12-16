@@ -6,7 +6,6 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"html"
 	"log"
 	"net/http"
 	"os"
@@ -66,9 +65,7 @@ func main() {
 	// heroku
 	addr, err := determineListenAddress()
 	errors.PanicIfErr(err)
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello, %q", html.EscapeString(r.URL.Path))
-	})
+	http.Handle("/", http.FileServer(http.Dir("./databases")))
 	go func() {
 		log.Fatal(http.ListenAndServe(addr, nil))
 	}()
