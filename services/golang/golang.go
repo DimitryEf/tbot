@@ -103,6 +103,8 @@ func initialize(db *gorm.DB) {
 	create(db, "Decode base64\n(tags: decode string base64)\n---\n\ndata, err := base64.StdEncoding.DecodeString(s)")
 	create(db, "Set value on field of structure in map\n(tags: set value field struct map)\n---\n\ntemp := m[key]\ntemp.SomeField = 42\nm[key] = temp")
 
+	//create(db, "Set value on field of structure in map\n(tags: set value field struct map)\n---\n\ntemp := m[key]\ntemp.SomeField = 42\nm[key] = temp")
+
 }
 
 func create(db *gorm.DB, query string) Topic {

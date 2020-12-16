@@ -1,1 +1,1 @@
-web: bin/tbot
+worker: bin/tbot
