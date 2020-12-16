@@ -142,19 +142,14 @@ func (n *Golang) Query(query string) (string, error) {
 
 	// get all
 	if strings.HasPrefix(query, "*") {
-		var topics []Topic
-		n.db.Find(&topics)
-		//var topic Topic
-		n.db.Model(&topics).Association("Tags").Find(&topics)
-		res := ""
-		for _, topic := range topics {
-			n.db.Model(&topic).Association("Tags").Find(&topic.Tags)
-			res += "\n\n===\n" + fmt.Sprintf(formatStr, topic.Title, topic.GetTagsString(), topic.Code)
-			if len(res) > 4096 {
-				break
-			}
+		var tags []Tag
+		n.db.Find(&tags)
+		tagsStr := make([]string, 0, len(tags))
+		for _, tag := range tags {
+			tagsStr = append(tagsStr, tag.Name)
 		}
-		res = res[:strings.LastIndex(res, "===")]
+		sort.Strings(tagsStr)
+		res := "all available tags:\n" + strings.Join(tagsStr, "\n")
 		return res, nil
 	}
 
