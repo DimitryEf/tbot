@@ -35,7 +35,8 @@ func main() {
 	errors.PanicIfErr(err)
 
 	// load db
-	db, err := gorm.Open(sqlite.Open("databases/golang.db"), &gorm.Config{
+	//db, err := gorm.Open(sqlite.Open("databases/golang.db"), &gorm.Config{
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{
 		Logger: logger.New(
 			log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
 			logger.Config{
