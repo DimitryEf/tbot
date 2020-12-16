@@ -67,7 +67,7 @@ func main() {
 		fmt.Fprintf(w, "Hello, %q", html.EscapeString(r.URL.Path))
 	})
 	go func() {
-		log.Fatal(http.ListenAndServe(":8089", nil))
+		log.Fatal(http.ListenAndServe(":80", nil))
 	}()
 
 	// start bot to listen chat messages
