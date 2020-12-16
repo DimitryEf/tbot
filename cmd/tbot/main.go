@@ -66,10 +66,10 @@ func main() {
 	addr, err := determineListenAddress()
 	errors.PanicIfErr(err)
 	http.Handle("/", http.FileServer(http.Dir("./databases")))
-	go func() {
-		log.Println("port", addr)
-		log.Fatal(http.ListenAndServe(addr, nil))
-	}()
+	//go func() {
+	log.Println("port", addr)
+	log.Fatal(http.ListenAndServe(addr, nil))
+	//}()
 
 	// start bot to listen chat messages
 	err = bot.Start()
