@@ -17,7 +17,7 @@ type Golang struct {
 
 func NewGolang(golangStg *config.GolangSettings, db *gorm.DB) *Golang {
 
-	initialize(db)
+	//initialize(db)
 
 	return &Golang{
 		golangStg: golangStg,
@@ -103,7 +103,7 @@ func initialize(db *gorm.DB) {
 	create(db, "Decode base64\n(tags: decode string base64)\n---\n\ndata, err := base64.StdEncoding.DecodeString(s)")
 	create(db, "Set value on field of structure in map\n(tags: set value field struct map)\n---\n\ntemp := m[key]\ntemp.SomeField = 42\nm[key] = temp")
 
-	//create(db, "Set value on field of structure in map\n(tags: set value field struct map)\n---\n\ntemp := m[key]\ntemp.SomeField = 42\nm[key] = temp")
+	create(db, "Deploy on Heroku\n(tags: heroku deploy)\n---\n\nCheck this:\n1. On site heroku/<myappname>/recources web toggle button turn on\n2. In code http.ListenAndServe(\":\" + os.Getenv(\"PORT\"), nil)\n3. In root app's dir you have \"Procfile\" with \"web: bin/myapp\"\n4. File go.mod have \"// +heroku goVersion go1.15\" above the line \"go 1.15\"")
 
 }
 
