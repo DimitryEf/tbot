@@ -49,11 +49,11 @@ func (b *Bot) Start() error {
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
 		//msg.ReplyToMessageID = update.Message.MessageID
 
-		msg.ParseMode = tgbotapi.ModeMarkdown
+		msg.ParseMode = tgbotapi.ModeMarkdownV2
 
-		msg.Text = "_test_test_"
-		b.bot.Send(msg)
-		continue
+		//msg.Text = "_test\\[test_"
+		//b.bot.Send(msg)
+		//continue
 
 		msg.Text, err = b.act(msg.Text)
 		if err != nil {

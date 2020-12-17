@@ -17,7 +17,7 @@ type Golang struct {
 
 func NewGolang(golangStg *config.GolangSettings, db *gorm.DB) *Golang {
 
-	//initialize(db)
+	initialize(db)
 
 	return &Golang{
 		golangStg: golangStg,
@@ -34,7 +34,7 @@ func initialize(db *gorm.DB) {
 	create(db, "Extract beginning of string (prefix)\n(tags: extract beginning string prefix)\n---\n\nt := string([]rune(s)[:5])")
 	create(db, "Extract string suffix\n(tags: extract string suffix)\n---\n\nt := string([]rune(s)[len([]rune(s))-5:])")
 	create(db, "Exec other program\n(tags: exec program)\n---\n\nerr := exec.Command(\"program\", \"arg1\", \"arg2\").Run()")
-	create(db, "Telegram message markdown\n(tags: telegram message markdown)\n---\n\n*полужирный*\n_курсив_\n[ссылка](http://www.example.com/)\n'строчный моноширинный'\n'''text\nблочный моноширинный (можно писать код)\n'''\n\nimport \"github.com/go-telegram-bot-api/telegram-bot-api\"\n\nmsg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)\nmsg.ParseMode = \"markdown\" //msg.ParseMode = tgbotapi.ModeMarkdown")
+	create(db, "Telegram message markdown\n(tags: telegram message markdown)\n---\n\n*полужирный*\n_курсив_\n[ссылка](http://www.example.com/)\n`строчный моноширинный`\n```text\nблочный моноширинный (можно писать код)\n```\n\nimport \"github.com/go-telegram-bot-api/telegram-bot-api\"\n\nmsg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)\nmsg.ParseMode = \"markdown\" //msg.ParseMode = tgbotapi.ModeMarkdown")
 	create(db, "Telegram message html\n(tags: telegram message html)\n---\n\n<b>полужирный</b>, <strong>полужирный</strong>\n<i>курсив</i>\n<a href=\"http://www.example.com/\">ссылка</a>\n<code>строчный моноширинный</code>\n<pre>блочный моноширинный (можно писать код)</pre>\n\nimport \"github.com/go-telegram-bot-api/telegram-bot-api\"\n\nmsg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)\nmsg.ParseMode = \"HTML\" //msg.ParseMode = tgbotapi.ModeHTML")
 	create(db, "Iterate over map entries ordered by keys\n(tags: iterate map order key)\n---\n\nkeys := make([]string, 0, len(mymap))\nfor k := range mymap {\n    keys = append(keys, k)\n}\nsort.Strings(keys)\nfor _, k := range keys {\n    x := mymap[k]\n    fmt.Println(\"Key =\", k, \", Value =\", x)\n}\n")
 	create(db, "Iterate over map entries ordered by values\n(tags: iterate map order value)\n---\n\ntype entry struct {\n    key   string\n    value int\n}\nentries := make([]entry, 0, len(mymap))\nfor k, x := range mymap {\n    entries = append(entries, entry{key: k, value: x})\n}\nsort.Slice(entries, func(i, j int) bool {\n    return entries[i].value < entries[j].value\n})\nfor _, e := range entries {\n    fmt.Println(\"Key =\", e.key, \", Value =\", e.value)\n}")
@@ -102,8 +102,8 @@ func initialize(db *gorm.DB) {
 	create(db, "Encode bytes to base64\n(tags: encode byte base64)\n---\n\ns := base64.StdEncoding.EncodeToString(data)")
 	create(db, "Decode base64\n(tags: decode string base64)\n---\n\ndata, err := base64.StdEncoding.DecodeString(s)")
 	create(db, "Set value on field of structure in map\n(tags: set value field struct map)\n---\n\ntemp := m[key]\ntemp.SomeField = 42\nm[key] = temp")
-
 	create(db, "Deploy on Heroku\n(tags: heroku deploy)\n---\n\nCheck this:\n1. On site heroku/<myappname>/recources web toggle button turn on\n2. In code http.ListenAndServe(\":\" + os.Getenv(\"PORT\"), nil)\n3. In root app's dir you have \"Procfile\" with \"web: bin/myapp\"\n4. File go.mod have \"// +heroku goVersion go1.15\" above the line \"go 1.15\"")
+	create(db, "HTTP file server\n(tags: http file server)\n---\n\nhttp.Handle(\"/\", http.FileServer(http.Dir(\".\")))\nhttp.ListenAndServe(\":80\", nil)\n// log.Fatal(http.ListenAndServe(\":8080\", http.FileServer(http.Dir(\"/usr/share/doc\"))))")
 
 }
 
@@ -131,7 +131,7 @@ func (n *Golang) IsReady() bool {
 }
 
 func (n *Golang) Query(query string) (string, error) {
-	formatStr := "*%s*\n_(tags:%v)_\n---\n`%s`"
+	formatStr := "*%s*\n_\\(tags:%v\\)_\n\\-\\-\\-\n`%s`"
 
 	// create new
 	if strings.HasPrefix(query, "+") {
@@ -192,7 +192,7 @@ func (n *Golang) Query(query string) (string, error) {
 
 	res := ""
 	for i, val := range matches {
-		res += "\n\n===\n" + fmt.Sprintf(formatStr, val.topic.Title, val.topic.GetTagsString(), val.topic.Code)
+		res += "\n\n\\=\\=\\=\n" + fmt.Sprintf(formatStr, val.topic.Title, val.topic.GetTagsString(), val.topic.Code)
 		if i > 1 {
 			break
 		}

@@ -36,8 +36,9 @@ const (
 
 // Constant values for ParseMode in MessageConfig
 const (
-	ModeMarkdown = "Markdown"
-	ModeHTML     = "HTML"
+	ModeMarkdown   = "Markdown"
+	ModeMarkdownV2 = "MarkdownV2"
+	ModeHTML       = "HTML"
 )
 
 // Library errors
@@ -69,6 +70,18 @@ type BaseChat struct {
 	ReplyToMessageID    int
 	ReplyMarkup         interface{}
 	DisableNotification bool
+}
+
+func (chat *BaseChat) params() (Params, error) {
+	params := make(Params)
+
+	params.AddFirstValid("chat_id", chat.ChatID, chat.ChannelUsername)
+	params.AddNonZero("reply_to_message_id", chat.ReplyToMessageID)
+	params.AddBool("disable_notification", chat.DisableNotification)
+
+	err := params.AddInterface("reply_markup", chat.ReplyMarkup)
+
+	return params, err
 }
 
 // values returns url.Values representation of BaseChat
@@ -764,6 +777,47 @@ func (config ContactConfig) method() string {
 	return "sendContact"
 }
 
+// SendPollConfig allows you to send a poll.
+type SendPollConfig struct {
+	BaseChat
+	Question              string
+	Options               []string
+	IsAnonymous           bool
+	Type                  string
+	AllowsMultipleAnswers bool
+	CorrectOptionID       int64
+	Explanation           string
+	ExplanationParseMode  string
+	OpenPeriod            int
+	CloseDate             int
+	IsClosed              bool
+}
+
+func (config SendPollConfig) values() (url.Values, error) {
+	params, err := config.BaseChat.params()
+	if err != nil {
+		return params.toValues(), err
+	}
+
+	params["question"] = config.Question
+	err = params.AddInterface("options", config.Options)
+	params["is_anonymous"] = strconv.FormatBool(config.IsAnonymous)
+	params.AddNonEmpty("type", config.Type)
+	params["allows_multiple_answers"] = strconv.FormatBool(config.AllowsMultipleAnswers)
+	params["correct_option_id"] = strconv.FormatInt(config.CorrectOptionID, 10)
+	params.AddBool("is_closed", config.IsClosed)
+	params.AddNonEmpty("explanation", config.Explanation)
+	params.AddNonEmpty("explanation_parse_mode", config.ExplanationParseMode)
+	params.AddNonZero("open_period", config.OpenPeriod)
+	params.AddNonZero("close_date", config.CloseDate)
+
+	return params.toValues(), err
+}
+
+func (SendPollConfig) method() string {
+	return "sendPoll"
+}
+
 // GameConfig allows you to send a game.
 type GameConfig struct {
 	BaseChat
@@ -1138,8 +1192,9 @@ type PreCheckoutConfig struct {
 
 // DeleteMessageConfig contains information of a message in a chat to delete.
 type DeleteMessageConfig struct {
-	ChatID    int64
-	MessageID int
+	ChannelUsername string
+	ChatID          int64
+	MessageID       int
 }
 
 func (config DeleteMessageConfig) method() string {
@@ -1149,7 +1204,12 @@ func (config DeleteMessageConfig) method() string {
 func (config DeleteMessageConfig) values() (url.Values, error) {
 	v := url.Values{}
 
-	v.Add("chat_id", strconv.FormatInt(config.ChatID, 10))
+	if config.ChannelUsername == "" {
+		v.Add("chat_id", strconv.FormatInt(config.ChatID, 10))
+	} else {
+		v.Add("chat_id", config.ChannelUsername)
+	}
+
 	v.Add("message_id", strconv.Itoa(config.MessageID))
 
 	return v, nil
@@ -1261,4 +1321,46 @@ func (config DeleteChatPhotoConfig) values() (url.Values, error) {
 	v.Add("chat_id", strconv.FormatInt(config.ChatID, 10))
 
 	return v, nil
+}
+
+// GetStickerSetConfig contains information for get sticker set.
+type GetStickerSetConfig struct {
+	Name string
+}
+
+func (config GetStickerSetConfig) method() string {
+	return "getStickerSet"
+}
+
+func (config GetStickerSetConfig) values() (url.Values, error) {
+	v := url.Values{}
+	v.Add("name", config.Name)
+	return v, nil
+}
+
+// DiceConfig contains information about a sendDice request.
+type DiceConfig struct {
+	BaseChat
+	// Emoji on which the dice throw animation is based.
+	// Currently, must be one of “🎲”, “🎯”, or “🏀”.
+	// Dice can have values 1-6 for “🎲” and “🎯”, and values 1-5 for “🏀”.
+	// Defaults to “🎲”
+	Emoji string
+}
+
+// values returns a url.Values representation of DiceConfig.
+func (config DiceConfig) values() (url.Values, error) {
+	v, err := config.BaseChat.values()
+	if err != nil {
+		return v, err
+	}
+	if config.Emoji != "" {
+		v.Add("emoji", config.Emoji)
+	}
+	return v, nil
+}
+
+// method returns Telegram API method name for sending Dice.
+func (config DiceConfig) method() string {
+	return "sendDice"
 }

@@ -30,10 +30,11 @@ type Tag struct {
 
 func ConvertQueryToTopic(query string) *Topic {
 	topic := Topic{}
+	divider := "---"
 	title := query[:strings.Index(query, "\n")]
 	topic.Title = title
 	query = query[len(title):]
-	tagsStr := query[:strings.Index(query, "---")]
+	tagsStr := query[:strings.Index(query, divider)]
 	tagsStr2 := tagsStr[len("(tags:  "):strings.Index(tagsStr, ")")]
 	tags := strings.Split(strings.ToLower(tagsStr2), " ")
 	for _, tag := range tags {
@@ -42,7 +43,29 @@ func ConvertQueryToTopic(query string) *Topic {
 		})
 	}
 	query = query[len(tagsStr):]
-	code := query[5:]
+	code := query[len(divider):]
+	code = strings.TrimPrefix(code, "\n")
+
+	code = strings.ReplaceAll(code, "_", "\\_")
+	code = strings.ReplaceAll(code, "*", "\\*")
+	code = strings.ReplaceAll(code, "[", "\\[")
+	code = strings.ReplaceAll(code, "]", "\\]")
+	code = strings.ReplaceAll(code, "(", "\\(")
+	code = strings.ReplaceAll(code, ")", "\\)")
+	code = strings.ReplaceAll(code, "~", "\\~")
+	code = strings.ReplaceAll(code, "`", "\\`")
+	code = strings.ReplaceAll(code, ">", "\\>")
+	code = strings.ReplaceAll(code, "#", "\\#")
+	code = strings.ReplaceAll(code, "+", "\\+")
+	code = strings.ReplaceAll(code, "-", "\\-")
+	code = strings.ReplaceAll(code, "=", "\\=")
+	code = strings.ReplaceAll(code, "|", "\\|")
+	code = strings.ReplaceAll(code, "{", "\\{")
+	code = strings.ReplaceAll(code, "}", "\\}")
+	code = strings.ReplaceAll(code, ".", "\\.")
+	code = strings.ReplaceAll(code, "!", "\\!")
+	//'_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'
+
 	topic.Code = code
 	return &topic
 }
