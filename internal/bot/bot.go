@@ -49,8 +49,11 @@ func (b *Bot) Start() error {
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
 		//msg.ReplyToMessageID = update.Message.MessageID
 
-		if strings.HasPrefix(msg.Text, "go") {
-			msg.ParseMode = tgbotapi.ModeMarkdownV2
+		for _, val := range b.cfg.Stg.Services["golang"] {
+			if strings.HasPrefix(msg.Text, val) {
+				msg.ParseMode = tgbotapi.ModeMarkdownV2
+				break
+			}
 		}
 
 		//msg.Text = "_test\\[test_"
