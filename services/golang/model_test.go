@@ -32,7 +32,7 @@ func TestConvertQueryToTopic(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := ConvertQueryToTopic(tt.args.query); !reflect.DeepEqual(got, tt.want) {
+			if got, _ := ConvertQueryToTopic(tt.args.query); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ConvertQueryToTopic() = %v, want %v", got, tt.want)
 			}
 		})
