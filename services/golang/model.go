@@ -3,6 +3,7 @@ package golang
 import (
 	"gorm.io/gorm"
 	"strings"
+	"tbot/tools"
 )
 
 type Topic struct {
@@ -46,25 +47,7 @@ func ConvertQueryToTopic(query string) *Topic {
 	code := query[len(divider):]
 	code = strings.TrimPrefix(code, "\n")
 
-	code = strings.ReplaceAll(code, "_", "\\_")
-	code = strings.ReplaceAll(code, "*", "\\*")
-	code = strings.ReplaceAll(code, "[", "\\[")
-	code = strings.ReplaceAll(code, "]", "\\]")
-	code = strings.ReplaceAll(code, "(", "\\(")
-	code = strings.ReplaceAll(code, ")", "\\)")
-	code = strings.ReplaceAll(code, "~", "\\~")
-	code = strings.ReplaceAll(code, "`", "\\`")
-	code = strings.ReplaceAll(code, ">", "\\>")
-	code = strings.ReplaceAll(code, "#", "\\#")
-	code = strings.ReplaceAll(code, "+", "\\+")
-	code = strings.ReplaceAll(code, "-", "\\-")
-	code = strings.ReplaceAll(code, "=", "\\=")
-	code = strings.ReplaceAll(code, "|", "\\|")
-	code = strings.ReplaceAll(code, "{", "\\{")
-	code = strings.ReplaceAll(code, "}", "\\}")
-	code = strings.ReplaceAll(code, ".", "\\.")
-	code = strings.ReplaceAll(code, "!", "\\!")
-	//'_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'
+	code = tools.EscapeMarkdownV2(code)
 
 	topic.Code = code
 	return &topic

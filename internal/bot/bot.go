@@ -49,7 +49,9 @@ func (b *Bot) Start() error {
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
 		//msg.ReplyToMessageID = update.Message.MessageID
 
-		msg.ParseMode = tgbotapi.ModeMarkdownV2
+		if strings.HasPrefix(msg.Text, "go") {
+			msg.ParseMode = tgbotapi.ModeMarkdownV2
+		}
 
 		//msg.Text = "_test\\[test_"
 		//b.bot.Send(msg)
