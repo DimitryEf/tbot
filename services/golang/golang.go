@@ -26,7 +26,10 @@ func NewGolang(golangStg *config.GolangSettings, db *gorm.DB) *Golang {
 }
 
 func create(db *gorm.DB, query string) Topic {
-	topic := ConvertQueryToTopic(query)
+	topic, err := ConvertQueryToTopic(query)
+	if err != nil {
+		return Topic{}
+	}
 	tags := topic.Tags
 	for i, tag := range tags {
 		db.Debug().Where("name = ?", tag.Name).Find(&tag)
