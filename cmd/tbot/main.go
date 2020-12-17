@@ -78,9 +78,9 @@ func main() {
 }
 
 func determineListenAddress() (string, error) {
-	//return ":8081", nil
 	port := os.Getenv("PORT")
 	if port == "" {
+		return ":8081", nil
 		return "", fmt.Errorf("$PORT not set")
 	}
 	return ":" + port, nil

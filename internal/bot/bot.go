@@ -51,7 +51,9 @@ func (b *Bot) Start() error {
 
 		msg.ParseMode = tgbotapi.ModeMarkdown
 
-		//b.bot.Send(msg)
+		msg.Text = "_test_test_"
+		b.bot.Send(msg)
+		continue
 
 		msg.Text, err = b.act(msg.Text)
 		if err != nil {
