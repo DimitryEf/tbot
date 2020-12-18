@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 	"tbot/config"
+	"tbot/tools"
 )
 
 type Golang struct {
@@ -58,7 +59,7 @@ func (n *Golang) Query(query string) (string, error) {
 	if strings.HasPrefix(query, "+") {
 		query = query[1:]
 		newTopic := create(n.db, query)
-		return fmt.Sprintf(formatStr, newTopic.Title, newTopic.GetTagsString(), newTopic.Code), nil
+		return fmt.Sprintf(formatStr, tools.EscapeMarkdownV2(newTopic.Title), newTopic.GetTagsString(), newTopic.Code), nil
 	}
 
 	// get all
@@ -113,7 +114,7 @@ func (n *Golang) Query(query string) (string, error) {
 
 	res := ""
 	for i, val := range matches {
-		res += "\n\n\\=\\=\\=\n" + fmt.Sprintf(formatStr, val.topic.Title, val.topic.GetTagsString(), val.topic.Code)
+		res += "\n\n\\=\\=\\=\n" + fmt.Sprintf(formatStr, tools.EscapeMarkdownV2(val.topic.Title), val.topic.GetTagsString(), val.topic.Code)
 		if i > 3 {
 			break
 		}
