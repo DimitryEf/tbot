@@ -38,6 +38,7 @@ help_text: |
   4) golang - tips and tricks
   using: go [or Go, го, Го] <tag1> <tag2> ...
   example: go extract prefix
+  command to show all tags: go *
 
 wiki:
   tag: wiki

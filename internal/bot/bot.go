@@ -74,6 +74,15 @@ func (b *Bot) Start() error {
 			msg.Text = msg.Text[:4096]
 		}
 
+		//decoded, _ := charmap.Windows1252.NewDecoder().Bytes([]byte(msg.Text))
+		//if err != nil {
+		//	log.Printf("error: %v", err)
+		//	log.Println("text:", msg.Text)
+		//}
+		//msg.Text = string(decoded)
+
+		//log.Println("utf8.ValidString:", utf8.ValidString(msg.Text))
+
 		_, err = b.bot.Send(msg)
 		if err != nil {
 			log.Printf("error: %v", err)
