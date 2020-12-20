@@ -56,7 +56,7 @@ func (b *Bot) Start() error {
 			}
 		}
 
-		//msg.Text = "_test\\[test_"
+		//msg.Text = "\"Toggle Off\\\\n\""
 		//b.bot.Send(msg)
 		//continue
 
