@@ -114,6 +114,9 @@ func (n *Golang) Query(query string) (string, error) {
 
 	res := ""
 	for i, val := range matches {
+		if len(res)+len("\n\n\\=\\=\\=\n"+fmt.Sprintf(formatStr, tools.EscapeMarkdownV2(val.topic.Title), val.topic.GetTagsString(), val.topic.Code)) > 4096 {
+			break
+		}
 		res += "\n\n\\=\\=\\=\n" + fmt.Sprintf(formatStr, tools.EscapeMarkdownV2(val.topic.Title), val.topic.GetTagsString(), val.topic.Code)
 		if i > 3 {
 			break
