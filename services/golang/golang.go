@@ -33,14 +33,14 @@ func create(db *gorm.DB, query string) Topic {
 	}
 	tags := topic.Tags
 	for i, tag := range tags {
-		db.Debug().Where("name = ?", tag.Name).Find(&tag)
+		db.Where("name = ?", tag.Name).Find(&tag)
 		if tag.Id == 0 {
-			db.Debug().Create(&tag)
+			db.Create(&tag)
 		}
 		tags[i] = tag
 	}
 	topic.Tags = tags
-	db.Debug().Create(topic)
+	db.Create(topic)
 	return *topic
 }
 
