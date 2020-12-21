@@ -67,11 +67,13 @@ func (b *Bot) Start() error {
 		}
 
 		if msg.Text == "" {
-			msg.Text = "не получилось..."
+			msg.Text = "не получилось\\.\\.\\."
 		}
 
 		if len(msg.Text) > 4096 {
 			msg.Text = msg.Text[:4096]
+			msg.Text = strings.TrimSuffix(msg.Text, "\\")
+			msg.Text = msg.Text[:len(msg.Text)-9] + "\\.\\.\\.`"
 		}
 
 		//decoded, _ := charmap.Windows1252.NewDecoder().Bytes([]byte(msg.Text))
