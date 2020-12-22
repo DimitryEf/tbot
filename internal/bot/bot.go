@@ -72,33 +72,7 @@ func (b *Bot) Start() error {
 			text = "не получилось\\.\\.\\."
 		}
 
-		var msgs []tgbotapi.MessageConfig
-		limit := 3
-		offset := textMaxLength
-		for {
-			if len(text) > textMaxLength {
-				if limit <= 0 {
-					break
-				}
-				limit--
-				oneMsg := msg
-				oneMsg.Text = text[:textMaxLength]
-				if oneMsg.Text[len(oneMsg.Text)-1] == '\\' && oneMsg.Text[len(oneMsg.Text)-2] != '\\' {
-					oneMsg.Text = oneMsg.Text[:textMaxLength-1]
-					offset--
-				}
-				text = text[offset:]
-				if oneMsg.ParseMode == tgbotapi.ModeMarkdownV2 {
-					oneMsg.Text = oneMsg.Text + "`"
-					text = "`" + text
-				}
-				msgs = append(msgs, oneMsg)
-				continue
-			}
-			msg.Text = text
-			msgs = append(msgs, msg)
-			break
-		}
+		msgs := pagination(text, msg)
 
 		for _, oneMsg := range msgs {
 			_, err = b.bot.Send(oneMsg)
@@ -109,6 +83,37 @@ func (b *Bot) Start() error {
 		}
 	}
 	return nil
+}
+
+func pagination(text string, msg tgbotapi.MessageConfig) []tgbotapi.MessageConfig {
+	var msgs []tgbotapi.MessageConfig
+	limit := 3
+	offset := textMaxLength
+	for {
+		if len(text) > textMaxLength {
+			if limit <= 0 {
+				break
+			}
+			limit--
+			oneMsg := msg
+			oneMsg.Text = text[:textMaxLength]
+			if oneMsg.Text[len(oneMsg.Text)-1] == '\\' && oneMsg.Text[len(oneMsg.Text)-2] != '\\' {
+				oneMsg.Text = oneMsg.Text[:textMaxLength-1]
+				offset--
+			}
+			text = text[offset:]
+			if oneMsg.ParseMode == tgbotapi.ModeMarkdownV2 {
+				oneMsg.Text = oneMsg.Text + "`"
+				text = "`" + text
+			}
+			msgs = append(msgs, oneMsg)
+			continue
+		}
+		msg.Text = text
+		msgs = append(msgs, msg)
+		break
+	}
+	return msgs
 }
 
 func (b *Bot) act(msgText string) (string, error) {
