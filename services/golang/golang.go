@@ -62,8 +62,8 @@ func (n *Golang) Query(query string) (string, error) {
 		return fmt.Sprintf(formatStr, tools.EscapeMarkdownV2(newTopic.Title), newTopic.GetTagsString(), newTopic.Code), nil
 	}
 
-	// get all
-	if strings.HasPrefix(query, "*") {
+	// get all tags
+	if strings.HasPrefix(query, "#") {
 		var tags []Tag
 		n.db.Find(&tags)
 		tagsStr := make([]string, 0, len(tags))
@@ -73,6 +73,19 @@ func (n *Golang) Query(query string) (string, error) {
 		sort.Strings(tagsStr)
 		res := "all available tags:\n" + strings.Join(tagsStr, "\n")
 		return res, nil
+	}
+
+	// get all titles
+	if strings.HasPrefix(query, "*") {
+		var topics []Topic
+		n.db.Find(&topics)
+		topicStr := make([]string, 0, len(topics))
+		for _, topic := range topics {
+			topicStr = append(topicStr, topic.Title)
+		}
+		sort.Strings(topicStr)
+		res := "all titles:\n" + strings.Join(topicStr, "\n")
+		return tools.EscapeMarkdownV2(res), nil
 	}
 
 	queryTags := strings.Split(strings.ToLower(query), " ")
