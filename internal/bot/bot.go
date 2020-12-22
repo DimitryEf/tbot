@@ -9,6 +9,8 @@ import (
 	"tbot/services"
 )
 
+const textMaxLength int = 4096
+
 type Bot struct {
 	bot *tgbotapi.BotAPI
 	cfg *config.Config
@@ -72,15 +74,24 @@ func (b *Bot) Start() error {
 
 		var msgs []tgbotapi.MessageConfig
 		limit := 3
+		offset := textMaxLength
 		for {
-			if len(text) > 4096 {
+			if len(text) > textMaxLength {
 				if limit <= 0 {
 					break
 				}
 				limit--
-				text = text[:4096]
 				oneMsg := msg
-				oneMsg.Text = strings.TrimSuffix(text, "\\") //TODO don't lose backslash, append it to the next message
+				oneMsg.Text = text[:textMaxLength]
+				if oneMsg.Text[len(oneMsg.Text)-1] == '\\' && oneMsg.Text[len(oneMsg.Text)-2] != '\\' {
+					oneMsg.Text = oneMsg.Text[:textMaxLength-1]
+					offset--
+				}
+				text = text[offset:]
+				if oneMsg.ParseMode == tgbotapi.ModeMarkdownV2 {
+					oneMsg.Text = oneMsg.Text + "`"
+					text = "`" + text
+				}
 				msgs = append(msgs, oneMsg)
 				continue
 			}
