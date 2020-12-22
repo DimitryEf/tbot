@@ -47,7 +47,7 @@ func (b *Bot) Start() error {
 		log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
-		//msg.ReplyToMessageID = update.Message.MessageID
+		//oneMsg.ReplyToMessageID = update.Message.MessageID
 
 		for _, val := range b.cfg.Stg.Services["golang"] {
 			if strings.HasPrefix(msg.Text, val) {
@@ -56,39 +56,45 @@ func (b *Bot) Start() error {
 			}
 		}
 
-		//msg.Text = "\"Toggle Off\\\\n\""
-		//b.bot.Send(msg)
+		//oneMsg.Text = "\"Toggle Off\\\\n\""
+		//b.bot.Send(oneMsg)
 		//continue
 
-		msg.Text, err = b.act(msg.Text)
+		text, err := b.act(msg.Text)
 		if err != nil {
 			log.Printf("error: %v", err)
-			msg.Text = fmt.Sprintf("error: %v", err)
+			text = fmt.Sprintf("error: %v", err)
 		}
 
-		if msg.Text == "" {
-			msg.Text = "не получилось\\.\\.\\."
+		if text == "" {
+			text = "не получилось\\.\\.\\."
 		}
 
-		if len(msg.Text) > 4096 {
-			msg.Text = msg.Text[:4096]
-			msg.Text = strings.TrimSuffix(msg.Text, "\\")
-			msg.Text = msg.Text[:len(msg.Text)-9] + "\\.\\.\\.`"
+		var msgs []tgbotapi.MessageConfig
+		limit := 3
+		for {
+			if len(text) > 4096 {
+				if limit <= 0 {
+					break
+				}
+				limit--
+				text = text[:4096]
+				oneMsg := msg
+				oneMsg.Text = strings.TrimSuffix(text, "\\") //TODO don't lose backslash, append it to the next message
+				msgs = append(msgs, oneMsg)
+				continue
+			}
+			msg.Text = text
+			msgs = append(msgs, msg)
+			break
 		}
 
-		//decoded, _ := charmap.Windows1252.NewDecoder().Bytes([]byte(msg.Text))
-		//if err != nil {
-		//	log.Printf("error: %v", err)
-		//	log.Println("text:", msg.Text)
-		//}
-		//msg.Text = string(decoded)
-
-		//log.Println("utf8.ValidString:", utf8.ValidString(msg.Text))
-
-		_, err = b.bot.Send(msg)
-		if err != nil {
-			log.Printf("error: %v", err)
-			log.Println("text:", msg.Text)
+		for _, oneMsg := range msgs {
+			_, err = b.bot.Send(oneMsg)
+			if err != nil {
+				log.Printf("error: %v", err)
+				log.Println("text:", oneMsg.Text)
+			}
 		}
 	}
 	return nil
