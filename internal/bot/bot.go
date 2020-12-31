@@ -72,9 +72,14 @@ func (b *Bot) Start() error {
 			text = "не получилось\\.\\.\\."
 		}
 
+		//text += "[if i fall asleep wake me up!](https://myapp20200522.herokuapp.com/hello)"
+
 		msgs := pagination(text, msg)
 
-		for _, oneMsg := range msgs {
+		for i, oneMsg := range msgs {
+			if i == len(msgs)-1 {
+				oneMsg.Text += "\n\n[if i fall asleep wake me up](https://myapp20200522.herokuapp.com/hello)"
+			}
 			_, err = b.bot.Send(oneMsg)
 			if err != nil {
 				log.Printf("error: %v", err)
