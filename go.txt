@@ -807,6 +807,33 @@ diff    // show diff between files
 grep    // find in text by regexp
 find    // find files
 wc      // words count
+
+https://opensource.com/article/20/12/linux-server
+
+uname -a    // full user info
+hostnamectl // server info (virtual or not)
+uptime      // working time
+who -Hu     // user info
+dmidecode -s system-product-name // virtual or not
+pstree       // processes info
+pstree -pa 1 //
+ps -ef
+ps auxf
+systemctl
+netstat -tulpn // network connections
+netstat -anp
+lsof -i
+ss
+iptables -L -n
+cat /etc/resolv.conf
+uname -r          // kernel
+cat /proc/cmdline
+lsmod
+modinfo <module>
+sysctl -a
+cat /boot/grub2/grub.cfg
+dmesg      // logs
+journalctl
 ==================================================
 Linux bash hotkeys
 (tags: linux bash hotkeys)
@@ -5830,7 +5857,7 @@ func gracefulShutdown(finish chan<- struct{}, cancel context.CancelFunc) {
   }()
 }
 ==================================================
-Golang hotkeys
+Goland hotkeys
 (tags: hotkeys goland)
 ---
 
@@ -6065,8 +6092,8 @@ ___________________________________________________
 columnname INT      columnname SERIAL   INTEGER PRIMARY
 AUTO_INCREMENT                          KEY AUTOINCREMENT
 ==================================================
-SQLite commands
-(tags: sqlite command)
+SQLite syntax
+(tags: sqlite syntax)
 ---
 
 CREATE TABLE test (
@@ -6220,6 +6247,8 @@ Elasticsearch in docker
 (tags: elasticsearch docker)
 ---
 
+https://www.freecodecamp.org/news/go-elasticsearch/
+
 // Run in docker
 docker run -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" docker.elastic.co/elasticsearch/elasticsearch:7.10.1
 // Create index
@@ -6281,19 +6310,926 @@ func main() {
 // Find matched
 curl -H "Content-Type: application/json" -X POST -d '{"query":{"match":{"name":"doe"}}}' http://localhost:9200/students/_search
 
+// main.go for search data
+package main
+
+import (
+  "context"
+  "encoding/json"
+  "fmt"
+  elastic "gopkg.in/olivere/elastic.v7"
+)
+
+func main() {
+  ctx := context.Background()
+  esclient, err := GetESClient()
+  if err != nil {
+    fmt.Println("Error initializing : ", err)
+    panic("Client fail ")
+  }
+
+  var students []Student
+
+  searchSource := elastic.NewSearchSource()
+  searchSource.Query(elastic.NewMatchQuery("name", "Doe"))
+
+  /* this block will basically print out the es query */
+  queryStr, err1 := searchSource.Source()
+  queryJs, err2 := json.Marshal(queryStr)
+
+  if err1 != nil || err2 != nil {
+    fmt.Println("[esclient][GetResponse]err during query marshal=", err1, err2)
+  }
+  fmt.Println("[esclient]Final ESQuery=\n", string(queryJs))
+    /* until this block */
+
+  searchService := esclient.Search().Index("students").SearchSource(searchSource)
+
+  searchResult, err := searchService.Do(ctx)
+  if err != nil {
+    fmt.Println("[ProductsES][GetPIds]Error=", err)
+    return
+  }
+
+  for _, hit := range searchResult.Hits.Hits {
+    var student Student
+    err := json.Unmarshal(hit.Source, &student)
+    if err != nil {
+      fmt.Println("[Getting Students][Unmarshal] Err=", err)
+    }
+
+    students = append(students, student)
+  }
+
+  if err != nil {
+    fmt.Println("Fetching student fail: ", err)
+  } else {
+    for _, s := range students {
+      fmt.Printf("Student found Name: %s, Age: %d, Score: %f \n", s.Name, s.Age, s.AverageScore)
+    }
+  }
+}
+==================================================
+Anonymous structs for template data
+(tags: anonymous struct template)
+---
+
+https://talks.golang.org/2015/tricks.slide
+
+package main
+
+import (
+  "log"
+  "os"
+  "text/template"
+)
+
+func main() {
+  data := struct {
+    FirstName string
+    LastName string
+  }{
+    "John",
+    "Doe",
+  }
+  tmpl := template.Must(template.New("name").Parse("Hello, {{.FirstName}} {{.LastName}}!"))
+  if err := tmpl.Execute(os.Stdout, data); err != nil {
+    log.Fatal(err)
+  }
+}
+==================================================
+Anonymous structs for json
+(tags: anonymous struct json)
+---
+
+https://talks.golang.org/2015/tricks.slide
+
+// encoging from struct to json
+b, err := json.Marshal(struct {
+    ID   int
+    Name string
+}{42, "The answer"})
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("%s\n", b)
+
+// decoding ftom json to struct
+var data struct {
+    ID     int
+    Person struct {
+        Name string
+        Job  string
+    }
+}
+const s = `{"ID":42,"Person":{"Name":"George Costanza","Job":"Architect"}}`
+err := json.Unmarshal([]byte(s), &data)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println(data.ID, data.Person.Name, data.Person.Job)
+==================================================
+Anonymous structs with embedded mutex
+(tags: anonymous struct embedded mutex)
+---
+
+https://talks.golang.org/2015/tricks.slide
+
+var viewCount struct {
+    sync.Mutex
+    n int64
+}
+
+viewCount.Lock()
+viewCount.n++
+viewCount.Unlock()
+==================================================
+Anonymous structs with implementing interfaces
+(tags: anonymous struct implement interface)
+---
+
+https://talks.golang.org/2015/tricks.slide
+
+return struct {
+    io.ReadSeeker
+    io.Closer
+}{
+    io.NewSectionReader(strings.NewReader(s), 0, int64(len(s))),
+    ioutil.NopCloser(nil),
+}
+==================================================
+Anonymous interfaces
+(tags: anonymous interface)
+---
+
+https://talks.golang.org/2015/tricks.slide
+
+var s interface {
+        String() string
+    } = bytes.NewBufferString("I'm secretly a fmt.Stringer!")
+    fmt.Println(s.String())
+
+// or
+// Check that we can access methods of the underlying os.File.
+if _, ok := stdin.(interface {
+    Fd() uintptr
+}); !ok {
+    t.Error("can't access methods of underlying *os.File")
+}
+==================================================
+Method values
+(tags: method value)
+---
+
+https://talks.golang.org/2015/tricks.slide
+
+// Evaluating a method from a type yields a function:
+var f func(*bytes.Buffer, string) (int, error)
+var buf bytes.Buffer
+f = (*bytes.Buffer).WriteString
+f(&buf, "y u no buf.WriteString?")
+buf.WriteTo(os.Stdout)
+
+// Evaluating a method from a value creates a closure that holds that value:
+var f func(string) (int, error)
+var buf bytes.Buffer
+f = buf.WriteString
+f("Hey... ")
+f("this *is* cute.")
+buf.WriteTo(os.Stdout)
+==================================================
+Using sync.Once
+(tags: sync once)
+---
+
+https://talks.golang.org/2015/tricks.slide
+
+// Once is an object that will perform exactly one action.
+// type Once struct { /* Has unexported fields. */ }
+// func (o *Once) Do(f func())
+
+type LazyPrimes struct {
+    once   sync.Once // Guards the primes slice.
+    primes []int
+}
+
+func (p *LazyPrimes) init() {
+    // Populate p.primes with prime numbers.
+}
+
+func (p *LazyPrimes) Primes() []int {
+    p.once.Do(p.init)
+    return p.primes
+}
+==================================================
+Comparable types
+(tags: comparable type)
+---
+
+https://talks.golang.org/2015/tricks.slide
+
+// Bools, ints, floats, complex numbers, strings, pointers,
+// channels, structs, and interfaces are comparable.
+
+var a, b int = 42, 42
+fmt.Println(a == b) // true
+
+var i, j interface{} = a, b
+fmt.Println(i == j) // true
+
+var s, t struct{ i interface{} }
+s.i, t.i = a, b
+fmt.Println(s == t) // true
+
+// A struct is comparable only if its fields are comparable:
+var q, r struct{ s []string }
+fmt.Println(q == r) // build failed
+==================================================
+Map keys
+(tags: map key)
+---
+
+https://talks.golang.org/2015/tricks.slide
+
+// Any comparable type may be used as a map key.
+
+a := map[int]bool{}
+a[42] = true
+
+type T struct {
+    i int
+    s string
+}
+
+b := map[*T]bool{}
+b[&T{}] = true
+
+c := map[T]bool{}
+c[T{37, "hello!"}] = true
+
+d := map[interface{}]bool{}
+d[42] = true
+d[&T{}] = true
+d[T{123, "four five six"}] = true
+d[ioutil.Discard] = true
 
 
+// Interfaces as map keys
+// An example of interface map keys from Docker's broadcastwriter package:
 
+type BroadcastWriter struct {
+    sync.Mutex
+    writers map[io.WriteCloser]struct{}
+}
 
+func (w *BroadcastWriter) AddWriter(writer io.WriteCloser) {
+    w.Lock()
+    w.writers[writer] = struct{}{}
+    w.Unlock()
+}
 
+func (w *BroadcastWriter) Write(p []byte) (n int, err error) {
+    w.Lock()
+    for sw := range w.writers {
+        if n, err := sw.Write(p); err != nil || n != len(p) {
+            delete(w.writers, sw)
+        }
+    }
+    w.Unlock()
+    return len(p), nil
+}
 
+// Structs and interfaces together as map keys
+// A (very) contrived example: (Don't do this! Ever!)
 
+type cons struct {
+    car string
+    cdr interface{}
+}
 
+func (c cons) String() string {
+    if c.cdr == nil || c.cdr == (cons{}) {
+        return c.car
+    }
+    return fmt.Sprintf("%v %v", c.car, c.cdr)
+}
 
+func main() {
+    m := map[cons]string{}
+    c := cons{}
+    for _, s := range []string{"life?", "with my", "I doing", "What am"} {
+        c = cons{s, c}
+    }
+    m[c] = "No idea."
+    fmt.Println(c, m[c])
+}
+==================================================
+Using atomic.Value
+(tags: atomic value)
+---
 
+https://talks.golang.org/2015/tricks.slide
 
+// For instance, to share configuration between many goroutines:
+type Config struct {
+    Timeout time.Duration
+}
+var config atomic.Value
 
+// To set or update, use the Store method:
+config.Store(&Config{Timeout: 2*time.Second})
 
+// To read, each goroutine calls the Load method:
+// Note that storing different types in the same Value will cause a panic.
+cfg := config.Load().(*Config)
+==================================================
+Running Gitlab in docker container
+(tags: gitlab docker)
+---
 
+// add some host to /etc/hosts
+nano /etc/hosts
+127.0.0.1 myagitlab.com
 
+// run container
+docker run --detach \
+  --hostname mygitlab.com \
+  --publish 443:443 --publish 8880:80 --publish 22:22 \
+  --name gitlab \
+  --restart always \
+  --volume $GITLAB_HOME/config:/etc/gitlab \
+  --volume $GITLAB_HOME/logs:/var/log/gitlab \
+  --volume $GITLAB_HOME/data:/var/opt/gitlab \
+  gitlab/gitlab-ee:latest
 
+// wait and try mygitlab.com:8880
+==================================================
+Reading gzipped HTTP response
+(tags: gzip http)
+---
+
+https://stackoverflow.com/questions/13130341/reading-gzipped-http-response-in-go
+
+client := new(http.Client)
+
+request, err := http.NewRequest("GET", "http://stackoverflow.com", nil)
+request.Header.Add("Accept-Encoding", "gzip")
+
+response, err := client.Do(request)
+defer response.Body.Close()
+
+// Check that the server actually sent compressed data
+var reader io.ReadCloser
+switch response.Header.Get("Content-Encoding") {
+case "gzip":
+    reader, err = gzip.NewReader(response.Body)
+    defer reader.Close()
+default:
+    reader = response.Body
+}
+
+io.Copy(os.Stdout, reader) // print html to standard out
+==================================================
+Yaml syntax
+(tags: yaml syntax)
+---
+
+https://alingvo.ru/help-ru/yml
+
+--- # Movie list: block sequence
+- Casablanca
+- Spellbound
+- Notorious
+--- # Shopping list: one-line sequence
+[milk, bread, eggs, juice]
+
+--- # Block format
+name: John Smith
+age: 33
+--- # Single line format
+{name: John Smith, age: 33}
+
+# Block literals (line feeds are preserved):
+--- |
+  There was a young fellow of Warwick
+  Who had reason for feeling euphoric
+      For he could, by election
+      Have triune erection
+  Ionic, Corinthian, and Doric
+
+# Block literals (line feeds are ignored):
+--- >
+  Wrapped text
+  will be folded
+  into a single
+  paragraph
+
+  Blank lines denote
+  paragraph breaks
+
+# Sequences from maps:
+- {name: John Smith, age: 33}
+- name: Mary Smith
+  age: 27
+
+# Maps from sequences:
+men: [John Smith, Bill Jones]
+women:
+  - Mary Smith
+  - Susan Williams
+
+https://webdevblog.ru/yaml-dlya-veb-razrabotchikov/
+
+# json
+{
+  "company": "Google",
+  "full_name": "John Foo Bar Doe",
+  "name": "John",
+  "surname": "Christian Meyer"
+}
+# yaml
+company: Google             # Single words, no quotes
+full_name: John Foo Bar Doe # Full sentence, no quotes
+name: 'John'                # Using single quotes
+surname: "Christian Meyer"  # Using double quotes
+
+year: 2019 # Integer
+nodeVersion: 10.8 # Float
+
+#json
+{
+  "production": {
+    "node_version": "13.0.0",
+    "os": "ubuntu",
+    "package_manager": "yarn",
+    "run": ["yarn install", "NODE_ENV=${ENVIRONMENT} yarn build"],
+    "env": {
+      "ENVIRONMENT": "production"
+    }
+  },
+  "staging": {
+    "node_version": "13.0.0",
+    "os": "ubuntu",
+    "package_manager": "yarn",
+    "run": ["yarn install", "NODE_ENV=${ENVIRONMENT} yarn build"],
+    "env": {
+      "ENVIRONMENT": "staging"
+    }
+  }
+}
+#yaml
+base-config: &base
+  node_version: 13.0.0
+  os: ubuntu
+  package_manager: yarn
+  run:
+    - yarn install
+    - NODE_ENV=${ENVIRONMENT} yarn build
+
+production:
+  # Injection «base» attributes in production
+  <<: *base
+  env:
+    - ENVIRONMENT: production
+
+staging:
+  # Injection «base» attributes in staging
+  <<: *base
+  env:
+    - ENVIRONMENT: staging
+==================================================
+Convert between Windows-1251 and UTF-8
+(tags: convert windows1251 utf8)
+---
+
+https://golangs.org/open-write-utf-8-file-charset
+
+package main
+
+import (
+  "fmt"
+  "io/ioutil"
+  "os"
+  "golang.org/x/text/encoding/charmap"
+)
+
+func main() {
+  // Write string in Windows-1252
+  encoder := charmap.Windows1252.NewEncoder()
+  s, e := encoder.String("This is sample text with runes Š")
+  if e != nil {
+    panic(e)
+  }
+  ioutil.WriteFile("example.txt", []byte(s), os.ModePerm)
+
+  // Decode in UTF-8
+  f, e := os.Open("example.txt")
+  if e != nil {
+    panic(e)
+  }
+  defer f.Close()
+  decoder := charmap.Windows1252.NewDecoder()
+  reader := decoder.Reader(f)
+  b, err := ioutil.ReadAll(reader)
+  if err != nil {
+    panic(err)
+  }
+  fmt.Println(string(b))
+}
+==================================================
+Resetting remote to a certain commit
+(tags: git reset remote commit)
+---
+
+https://stackoverflow.com/questions/5816688/resetting-remote-to-a-certain-commit
+
+git reset --hard <commit-hash>
+git push -f origin master
+==================================================
+Gorm many2many
+(tags: gorm many2many)
+---
+
+import (
+  "gorm.io/gorm"
+)
+
+type Topic struct {
+  gorm.Model
+  Id      int    `gorm:"primaryKey"`
+  Title   string `gorm:"unique"`
+  Code    string
+  Checked bool
+  Tags    []Tag `gorm:"many2many:topic_tags;"`
+}
+
+//type TopicTags struct {
+//  gorm.Model
+//  Id int `gorm:"primaryKey"`
+//  Topics []Topic `gorm:"many2many:topic_tags;"`
+//  Tags    []Tag `gorm:"many2many:topic_tags;"`
+//}
+
+type Tag struct {
+  gorm.Model
+  Id     int     `gorm:"primaryKey"`
+  Name   string  `gorm:"unique"`
+  Topics []Topic `gorm:"many2many:topic_tags;"`
+}
+
+// Create new topic
+func create(db *gorm.DB, query string) Topic {
+  topic := &Topic{
+    Title: "Some title",
+    Code: "Some code",
+    Tags: []Tag{
+      {
+        Name: "testtag",
+      },
+    },
+  }
+  tags := topic.Tags
+  for i, tag := range tags {
+    db.Where("name = ?", tag.Name).Find(&tag)
+    if tag.Id == 0 {
+      db.Create(&tag)
+    }
+    tags[i] = tag
+  }
+  topic.Tags = tags
+  db.Create(topic)
+  return *topic
+}
+
+// Get all tags
+func getAllTags(db *gorm.DB) []Tag {
+  var tags []Tag
+  n.db.Find(&tags)
+  return tags
+}
+
+// Get all topics
+func getAllTopics(db *gorm.DB) []Topic {
+  var topics []Topic
+  n.db.Find(&topics)
+  return topics
+}
+
+// Get topics that have some tags
+func getTopicsWithTags(db *gorm.DB, queryTags []string) []Topic {
+  // get matched tags
+  var tags []Tag
+  n.db.Where("name IN ?", queryTags).Find(&tags)
+
+  // get associated topics by tags
+  var topics []Topic
+  n.db.Model(&tags).Association("Topics").Find(&topics)
+
+  // return topics
+
+  // make set deduplicate topics
+  set := make(map[string]Topic)
+  for _, topic := range topics {
+    set[topic.Title] = topic
+  }
+
+  // struct for sorting
+  var matchTopic struct {
+    match int
+    topic Topic
+  }
+
+  // make slice for counting matches
+  matches := make([]matchTopic, 0, len(set))
+  for _, topic := range set {
+    // add tags to topic struct
+    n.db.Model(&topic).Association("Tags").Find(&topic.Tags)
+    match := 0
+    for _, tag := range topic.Tags {
+      for _, queryTag := range queryTags {
+        if tag.Name == queryTag {
+          match++
+        }
+      }
+    }
+    matches = append(matches, matchTopic{match: match, topic: topic})
+  }
+
+  // sort slice by matches desc
+  sort.Slice(matches, func(i, j int) bool {
+    return matches[i].match > matches[j].match
+  })
+
+  res := make([]Topic, 0, len(matches))
+  for _, val := range matches {
+    res = append(res, val.topic)
+  }
+  return res
+}
+==================================================
+Get json without serialisation
+(tags: get json gjson)
+---
+
+https://github.com/tidwall/gjson
+
+package main
+
+import "github.com/tidwall/gjson"
+
+const json = `{"name":{"first":"Janet","last":"Prichard"},"age":47}`
+
+func main() {
+  value := gjson.Get(json, "name.last")
+  println(value.String())
+}
+
+{
+  "name": {"first": "Tom", "last": "Anderson"},
+  "age":37,
+  "children": ["Sara","Alex","Jack"],
+  "fav.movie": "Deer Hunter",
+  "friends": [
+    {"first": "Dale", "last": "Murphy", "age": 44, "nets": ["ig", "fb", "tw"]},
+    {"first": "Roger", "last": "Craig", "age": 68, "nets": ["fb", "tw"]},
+    {"first": "Jane", "last": "Murphy", "age": 47, "nets": ["ig", "tw"]}
+  ]
+}
+
+// path in gjson.Get
+"name.last"          >> "Anderson"
+"age"                >> 37
+"children"           >> ["Sara","Alex","Jack"]
+"children.#"         >> 3
+"children.1"         >> "Alex"
+"child*.2"           >> "Jack"
+"c?ildren.0"         >> "Sara"
+"fav\.movie"         >> "Deer Hunter"
+"friends.#.first"    >> ["Dale","Roger","Jane"]
+"friends.1.last"     >> "Craig"
+
+friends.#(last=="Murphy").first    >> "Dale"
+friends.#(last=="Murphy")#.first   >> ["Dale","Jane"]
+friends.#(age>45)#.last            >> ["Craig","Murphy"]
+friends.#(first%"D*").last         >> "Murphy"
+friends.#(first!%"D*").last        >> "Craig"
+friends.#(nets.#(=="fb"))#.first   >> ["Dale","Roger"]
+
+// types
+bool, for JSON booleans
+float64, for JSON numbers
+string, for JSON string literals
+nil, for JSON null
+
+result.Type    // can be String, Number, True, False, Null, or JSON
+result.Str     // holds the string
+result.Num     // holds the float64 number
+result.Raw     // holds the raw json
+result.Index   // index of raw value in original json, zero means index unknown
+
+"children|@reverse"           >> ["Jack","Alex","Sara"]
+"children|@reverse|0"         >> "Jack"
+
+// modifiers
+@reverse: Reverse an array or the members of an object.
+@ugly: Remove all whitespace from a json document.
+@pretty: Make the json document more human readable.
+@this: Returns the current element. It can be used to retrieve the root element.
+@valid: Ensure the json document is valid.
+@flatten: Flattens an array.
+@join: Joins multiple objects into a single object.
+
+// Custom modifiers
+gjson.AddModifier("case", func(json, arg string) string {
+  if arg == "upper" {
+    return strings.ToUpper(json)
+  }
+  if arg == "lower" {
+    return strings.ToLower(json)
+  }
+  return json
+})
+"children|@case:upper"           >> ["SARA","ALEX","JACK"]
+"children|@case:lower|@reverse"  >> ["jack","alex","sara"]
+
+// JSON Lines
+{"name": "Gilbert", "age": 61}
+{"name": "Alexa", "age": 34}
+{"name": "May", "age": 57}
+{"name": "Deloise", "age": 44}
+..#                   >> 4
+..1                   >> {"name": "Alexa", "age": 34}
+..3                   >> {"name": "Deloise", "age": 44}
+..#.name              >> ["Gilbert","Alexa","May","Deloise"]
+..#(name="May").age   >> 57
+
+// Unmarshal to a map
+m, ok := gjson.Parse(json).Value().(map[string]interface{})
+if !ok {
+  // not a map
+}
+
+// Validate JSON
+if !gjson.Valid(json) {
+  return errors.New("invalid json")
+}
+value := gjson.Get(json, "name.last")
+
+// For each
+result := gjson.Get(json, "programmers")
+result.ForEach(func(key, value gjson.Result) bool {
+  println(value.String())
+  return true // keep iterating
+})
+==================================================
+Set json without serialisation
+(tags: set json sjson)
+---
+
+https://github.com/tidwall/sjson
+
+package main
+
+import "github.com/tidwall/sjson"
+
+const json = `{"name":{"first":"Janet","last":"Prichard"},"age":47}`
+
+func main() {
+  value, _ := sjson.Set(json, "name.last", "Anderson")
+  println(value)
+}
+
+// Set a value from empty document:
+value, _ := sjson.Set("", "name", "Tom")
+println(value)
+// Output:
+// {"name":"Tom"}
+
+// Set a nested value from empty document:
+value, _ := sjson.Set("", "name.last", "Anderson")
+println(value)
+// Output:
+// {"name":{"last":"Anderson"}}
+
+// Set a new value:
+value, _ := sjson.Set(`{"name":{"last":"Anderson"}}`, "name.first", "Sara")
+println(value)
+// Output:
+// {"name":{"first":"Sara","last":"Anderson"}}
+
+// Update an existing value:
+value, _ := sjson.Set(`{"name":{"last":"Anderson"}}`, "name.last", "Smith")
+println(value)
+// Output:
+// {"name":{"last":"Smith"}}
+
+// Set a new array value:
+value, _ := sjson.Set(`{"friends":["Andy","Carol"]}`, "friends.2", "Sara")
+println(value)
+// Output:
+// {"friends":["Andy","Carol","Sara"]
+
+// Append an array value by using the -1 key in a path:
+value, _ := sjson.Set(`{"friends":["Andy","Carol"]}`, "friends.-1", "Sara")
+println(value)
+// Output:
+// {"friends":["Andy","Carol","Sara"]
+
+// Append an array value that is past the end:
+value, _ := sjson.Set(`{"friends":["Andy","Carol"]}`, "friends.4", "Sara")
+println(value)
+// Output:
+// {"friends":["Andy","Carol",null,null,"Sara"]
+
+// Delete a value:
+value, _ := sjson.Delete(`{"name":{"first":"Sara","last":"Anderson"}}`, "name.first")
+println(value)
+// Output:
+// {"name":{"last":"Anderson"}}
+
+// Delete an array value:
+value, _ := sjson.Delete(`{"friends":["Andy","Carol"]}`, "friends.1")
+println(value)
+// Output:
+// {"friends":["Andy"]}
+
+// Delete the last array value:
+value, _ := sjson.Delete(`{"friends":["Andy","Carol"]}`, "friends.-1")
+println(value)
+// Output:
+// {"friends":["Andy"]}
+==================================================
+Git rename local and remote branch
+(tags: git rename branch)
+---
+
+https://stackoverflow.com/questions/30590083/how-do-i-rename-both-a-git-local-and-remote-branch-name
+
+// Renaming local and remote
+# Rename the local branch to the new name
+git branch -m <old_name> <new_name>
+# Delete the old branch on remote - where <remote> is, for example, origin
+git push <remote> --delete <old_name>
+# Or shorter way to delete remote branch [:]
+git push <remote> :<old_name>
+# Prevent git from using the old name when pushing in the next step.
+# Otherwise, git will use the old upstream name instead of <new_name>.
+git branch --unset-upstream <old_name>
+# Push the new branch to remote
+git push <remote> <new_name>
+# Reset the upstream branch for the new_name local branch
+git push <remote> -u <new_name>
+
+// Renaming Only remote branch
+# In this option, we will push the branch to the remote with the new name
+# While keeping the local name as is
+git push <remote> <remote>/<old_name>:refs/heads/<new_name> :<old_name>
+==================================================
+Switch between users on terminal
+(tags: switch user terminal)
+---
+
+$ whoami
+user1
+$ su - user2
+Password:
+$ whoami
+user2
+$ sudo -s
+Password:
+$ whoami
+root
+==================================================
+Cgo
+(tags: cgo)
+---
+
+https://github.com/golang/go/wiki/cgo
+
+package main
+
+/*
+#include <stdio.h>
+#include <stdlib.h>
+
+void myprint(char* s) {
+  printf("%s\n", s);
+}
+*/
+import "C"
+
+import "unsafe"
+
+func Example() {
+  cs := C.CString("Hello from stdio\n")
+  C.myprint(cs)
+  C.free(unsafe.Pointer(cs))
+}
+
+func main() {
+  Example()
+}
+==================================================
+Cgo
+(tags: cgo)
+---
