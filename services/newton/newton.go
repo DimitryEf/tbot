@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 	"tbot/config"
+	"tbot/internal/model"
 )
 
 type Newton struct {
@@ -31,7 +32,17 @@ func (n *Newton) IsReady() bool {
 	return n.ready
 }
 
-func (n *Newton) Query(query string) (string, error) {
+func (n *Newton) Query(query string) (model.Resp, error) {
+	text, err := n.query(query)
+	if err != nil {
+		return model.Resp{}, err
+	}
+	return model.Resp{
+		Text: text,
+	}, nil
+}
+
+func (n *Newton) query(query string) (string, error) {
 	client := &http.Client{}
 	query = strings.ToLower(query)
 

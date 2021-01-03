@@ -1,7 +1,6 @@
 package bot
 
 import (
-	"fmt"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"log"
 	"strings"
@@ -49,7 +48,6 @@ func (b *Bot) Start() error {
 		log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
-		//oneMsg.ReplyToMessageID = update.Message.MessageID
 
 		for _, val := range b.cfg.Stg.Services["golang"] {
 			if strings.HasPrefix(msg.Text, val) {
@@ -62,23 +60,23 @@ func (b *Bot) Start() error {
 		//b.bot.Send(oneMsg)
 		//continue
 
-		text, err := b.act(msg.Text)
+		resp, err := b.sm.Act(msg.Text)
 		if err != nil {
 			log.Printf("error: %v", err)
-			text = fmt.Sprintf("error: %v", err)
+			//resp.Text = fmt.Sprintf("error: %v", err)
 		}
 
-		if text == "" {
-			text = "не получилось\\.\\.\\."
+		if resp.Text == "" {
+			resp.Text = "не получилось"
 		}
 
-		//text += "[if i fall asleep wake me up!](https://myapp20200522.herokuapp.com/hello)"
+		msg.ParseMode = resp.ParseMod
 
-		msgs := pagination(text, msg)
+		msgs := pagination(resp.Text, msg)
 
 		for i, oneMsg := range msgs {
 			if i == len(msgs)-1 {
-				oneMsg.Text += "\n\n[if i fall asleep wake me up](https://myapp20200522.herokuapp.com/hello)"
+				oneMsg.Text += "\n\n[if I fall asleep wake me up](https://myapp20200522.herokuapp.com/hello)"
 			}
 			_, err = b.bot.Send(oneMsg)
 			if err != nil {
@@ -119,60 +117,4 @@ func pagination(text string, msg tgbotapi.MessageConfig) []tgbotapi.MessageConfi
 		break
 	}
 	return msgs
-}
-
-func (b *Bot) act(msgText string) (string, error) {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Println("recovered from ", r)
-		}
-	}()
-
-	if len(msgText) < 3 {
-		return msgText, nil
-	}
-
-	for serviceTag, acts := range b.cfg.Stg.Services {
-		for _, act := range acts {
-			if strings.HasPrefix(msgText, act) {
-				text := msgText[len(act):]
-				return b.chooseAction(serviceTag, text)
-			}
-		}
-	}
-
-	if strings.HasPrefix(msgText, "/help") {
-		return b.cfg.Stg.HelpText, nil
-	}
-	return msgText, nil
-}
-
-func (b *Bot) chooseAction(serviceTag string, text string) (string, error) {
-	if text == "" {
-		return text, nil
-	}
-	switch serviceTag {
-	case b.cfg.Stg.WikiStg.Tag:
-		return b.takeAction(b.cfg.Stg.WikiStg.Tag, text)
-	case b.cfg.Stg.NewtonStg.Tag:
-		return b.takeAction(b.cfg.Stg.NewtonStg.Tag, text)
-	case b.cfg.Stg.PlaygroundStg.Tag:
-		return b.takeAction(b.cfg.Stg.PlaygroundStg.Tag, text)
-	case b.cfg.Stg.MarkovStg.Tag:
-		return b.takeAction(b.cfg.Stg.MarkovStg.Tag, text)
-	case b.cfg.Stg.GolangStg.Tag:
-		return b.takeAction(b.cfg.Stg.GolangStg.Tag, text)
-	}
-	return text, nil
-}
-
-func (b *Bot) takeAction(tag string, text string) (string, error) {
-	if b.sm.Services[tag].IsReady() {
-		result, err := b.sm.Services[tag].Query(text)
-		if err != nil {
-			return "", err
-		}
-		return result, nil
-	}
-	return "Not ready yet. Please, waiting some minutes", nil
 }

@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 	"tbot/config"
+	"tbot/internal/model"
 	"tbot/tools"
 )
 
@@ -26,7 +27,7 @@ func NewGolang(golangStg *config.GolangSettings, db *gorm.DB) *Golang {
 	}
 }
 
-func create(db *gorm.DB, query string) Topic {
+func create(db *gorm.DB, query string) Topic { //TODO add return err
 	topic, err := ConvertQueryToTopic(query)
 	if err != nil {
 		return Topic{}
@@ -52,14 +53,17 @@ func (n *Golang) IsReady() bool {
 	return n.ready
 }
 
-func (n *Golang) Query(query string) (string, error) {
+func (n *Golang) Query(query string) (model.Resp, error) {
 	formatStr := "*%s*\n_\\(tags:%v\\)_\n\\-\\-\\-\n`%s`"
 
 	// create new
 	if strings.HasPrefix(query, "+") {
 		query = query[1:]
 		newTopic := create(n.db, query)
-		return fmt.Sprintf(formatStr, tools.EscapeMarkdownV2(newTopic.Title), newTopic.GetTagsString(), newTopic.Code), nil
+		return model.Resp{
+			Text:     fmt.Sprintf(formatStr, tools.EscapeMarkdownV2(newTopic.Title), newTopic.GetTagsString(), newTopic.Code),
+			ParseMod: model.ModeMarkdownV2,
+		}, nil
 	}
 
 	// get all tags
@@ -72,7 +76,9 @@ func (n *Golang) Query(query string) (string, error) {
 		}
 		sort.Strings(tagsStr)
 		res := "all available tags:\n" + strings.Join(tagsStr, "\n")
-		return res, nil
+		return model.Resp{
+			Text: res,
+		}, nil
 	}
 
 	// get all titles
@@ -85,7 +91,9 @@ func (n *Golang) Query(query string) (string, error) {
 		}
 		sort.Strings(topicStr)
 		res := "all titles:\n" + strings.Join(topicStr, "\n")
-		return tools.EscapeMarkdownV2(res), nil
+		return model.Resp{
+			Text: res,
+		}, nil
 	}
 
 	queryTags := strings.Split(strings.ToLower(query), " ")
@@ -136,7 +144,10 @@ func (n *Golang) Query(query string) (string, error) {
 		}
 	}
 
-	return res, nil
+	return model.Resp{
+		Text:     res,
+		ParseMod: model.ModeMarkdownV2,
+	}, nil
 }
 
 type matchTopic struct {

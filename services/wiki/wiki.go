@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 	"tbot/config"
+	"tbot/internal/model"
 )
 
 type Wiki struct {
@@ -32,7 +33,17 @@ func (w *Wiki) IsReady() bool {
 	return w.ready
 }
 
-func (w *Wiki) Query(query string) (string, error) {
+func (w *Wiki) Query(query string) (model.Resp, error) {
+	text, err := w.query(query)
+	if err != nil {
+		return model.Resp{}, err
+	}
+	return model.Resp{
+		Text: text,
+	}, nil
+}
+
+func (w *Wiki) query(query string) (string, error) {
 	client := &http.Client{}
 
 	url := strings.ReplaceAll(query, " ", "_")

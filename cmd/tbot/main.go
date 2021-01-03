@@ -56,7 +56,7 @@ func main() {
 	playground := playground2.NewPlayground(cfg.Stg.PlaygroundStg)
 	//markov := markov2.NewMarkov(cfg.Stg.MarkovStg)
 	golang := golang2.NewGolang(cfg.Stg.GolangStg, db)
-	serviceManager := services.NewServiceManager(wiki, newton, playground, golang)
+	serviceManager := services.NewServiceManager(cfg, wiki, newton, playground, golang)
 
 	// load bot
 	bot, err := bot2.NewBot(cfg, serviceManager)

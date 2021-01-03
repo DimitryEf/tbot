@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"tbot/config"
+	"tbot/internal/model"
 )
 
 type Playground struct {
@@ -32,7 +33,17 @@ func (p *Playground) IsReady() bool {
 	return p.ready
 }
 
-func (p *Playground) Query(query string) (string, error) {
+func (p *Playground) Query(query string) (model.Resp, error) {
+	text, err := p.query(query)
+	if err != nil {
+		return model.Resp{}, err
+	}
+	return model.Resp{
+		Text: text,
+	}, nil
+}
+
+func (p *Playground) query(query string) (string, error) {
 	client := &http.Client{}
 
 	payload := "version=2&body=" + url.QueryEscape(query) + "&withVet=true"
