@@ -7401,7 +7401,7 @@ func generateText(states []State, initWord string, count int) string {
   return text
 }
 ==================================================
-Simple neural network with gonum
+Neural network with gonum
 (tags: neural gonum)
 ---
 
@@ -7841,3 +7841,378 @@ func GetResult(output []float64) string {
   }
   return ""
 }
+==================================================
+Neural network with golearn
+(tags: neural golearn)
+---
+
+https://github.com/sjwhitworth/golearn
+https://github.com/sjwhitworth/golearn/blob/master/examples/datasets/iris.csv
+
+// go get "github.com/gonum/matrix"
+
+package main
+
+import (
+  "fmt"
+
+  "github.com/sjwhitworth/golearn/base"
+  "github.com/sjwhitworth/golearn/evaluation"
+  "github.com/sjwhitworth/golearn/knn"
+)
+
+func main() {
+  // Load in a dataset, with headers. Header attributes will be stored.
+  // Think of instances as a Data Frame structure in R or Pandas.
+  // You can also create instances from scratch.
+  rawData, err := base.ParseCSVToInstances("datasets/iris.csv", false)
+  if err != nil {
+    panic(err)
+  }
+
+  // Print a pleasant summary of your data.
+  fmt.Println(rawData)
+
+  //Initialises a new KNN classifier
+  cls := knn.NewKnnClassifier("euclidean", "linear", 2)
+
+  //Do a training-test split
+  trainData, testData := base.InstancesTrainTestSplit(rawData, 0.50)
+  cls.Fit(trainData)
+
+  //Calculates the Euclidean distance and returns the most popular label
+  predictions, err := cls.Predict(testData)
+  if err != nil {
+    panic(err)
+  }
+
+  // Prints precision/recall metrics
+  confusionMat, err := evaluation.GetConfusionMatrix(testData, predictions)
+  if err != nil {
+    panic(fmt.Sprintf("Unable to get confusion matrix: %s", err.Error()))
+  }
+  fmt.Println(evaluation.GetSummary(confusionMat))
+}
+==================================================
+Git syntax
+(tags: git syntax)
+---
+
+https://cheatography.com/mikesac/cheat-sheets/base-git/
+
+//// Global Config­uration
+// Globally configure your committer name
+git config --global user.name "John Doe"
+// Globally configure your committer email
+git config --global user.email johndoe@example.com
+
+//// Initialize new repository
+// Initialize current directory as a new git repostiroy
+git init
+// Add remote repository with name 'origin'
+git remote add origin https://repourl/repo.git
+// Promote all folder content for commit
+git add --all
+// Commit all files with given comment
+git commit -am"initial commit"
+
+//// Clone existing remote repostiroy
+// Clone remote repository via HTTPS, access credential could be reqeuired
+git clone https://giturl/repo.git
+// Clone remote repository via SSH, privat­e/p­ublic key exchange is required
+git clone ssh://giturl/repo.git
+
+//// Inspect your work
+// Provide you with the difference in commits and push between your local repo and the remote origin
+git status
+// List latest commit on the local repository
+git log
+// Provide a diff view between the local file and the HEAD version on the remote origin
+git diff ${FILENAME}
+
+//// Save you work
+// Retrieve all commit from remote repository named "­ori­gin­" and branch "­dev­elo­p" and merge them into local repository
+git pull origin develop
+// Promote ALL unstaged files for commit - use with care!
+git add --all
+// Promote given file/f­older for commit
+git add ${FILENAME}
+// Commit all promoted file to local repository
+git commit -m"my details on commit"
+// Push all commit to remote repository named "­ori­gin­" and branch "­dev­elo­p". Branch will be created if not present. May fail if remote repository has not been pulled before pushing since local repository is not up-to-date
+git push origin develop
+
+//// Branching
+// List all avaiable branches
+git branch -a
+// Fetch all remote repository data into local one, including new branches
+git fetch
+// Fetch all remote repository data into local one, including new branches. -p (prune) causes unexisting remote branches to be dropped also locally
+git fetch -p
+// Create a new branch named "­new­bra­nch­" starting from current commit
+git checkout -b newbranch
+// Merge local branch named "­oth­erb­ran­ch" to be merged into current local branch
+git merge otherbranch
+// Push all commit in local branch newbranch to remote origin, creating remote branch if not already present
+git push origin newbranch
+// Delete local branch named "­old­bra­nch­". Any tag pushed from deleted branch will be preserved.
+git branch -D oldbranch
+// Delete remote branch named "­old­bra­nch­". Any tag pushed from deleted branch will be preserved.
+git push origin --delete oldbranch
+// Merge branch named "­fea­tur­ebr­anc­h" into current one, squasshing all commit into a single one. Commit with comment is needed to complete operation.
+git merge --squash featurebranch
+
+//// Tagging
+// List all avaiable tags
+git tag -l
+// Fetch all remote repository data into local one, including tags
+git fetch --tags
+// Fetch all remote repository data into local one, including new tags. -p (prune) causes unexisting remote tags to be dropped also locally
+git fetch --tags -p
+// Creates a new tag named "­myt­ag" and attach it to current local commit
+git tag mytag
+// Push local tags to remote origin
+git push origin --tags
+// Delete local tag named "­old­tag­".
+git tag -d oldtag
+// Delete remote tag named "­old­tag­".
+git push origin :refs/tags/oldtag
+
+//// Cleaning up your repository
+// Reset local repository commit to remote origin on branch master. All changes will be preserved as uncomm­itted files
+git reset --soft origin master
+// Reset local repository commit to remote origin on branch master. All changes will be discarted - use with care!
+git reset --hard origin master
+// Remove untracked files - show only candidates no actual removal (alias -n )
+git clean --dry-run
+// Remove untracked files - Actual remove use with care!
+git clean -f
+// Remove untracked files and folders - Actual remove use with care!
+git clean -f -d
+// Remove ignored files - Actual remove use with care!
+git clean -f -X
+// Remove ignored and non-ig­nored files - Actual remove use with care!
+git clean -f -x
+// Show history for ${FILE­NAME} even if deleted, useful to know when a file has been removed
+git log -- ${FILENAME}
+
+
+https://gitsheet.wtf/
+
+Branches.
+git branch                     List all local branches.
+git branch -a                 List remote and local branches.
+git checkout -b branch_name   Create a local branch and switch to it.
+git checkout branch_name      Switch to an existing branch.
+git push origin branch_name   Push branch to remote.
+git branch -m new_name         Rename current branch.
+git branch -d branch_name     Delete a local branch.
+git push origin :branch_name  Delete a remote branch.
+
+Logs.
+git log --oneline       Show commit history in single lines.
+git log -2               Show commit history for last N commits.
+git log -p -2           Show commit history for last N commits with diff.
+git diff                Show all local file changes in the working tree.
+git diff myfile         Show changes made to a file.
+git blame myfile        Show who changed what & when in a file.
+git remote show origin  Show remote branches and their mapping to local.
+
+Cleanup.
+git clean -f           Delete all untracked files.
+git clean -df          Delete all untracked files and directories.
+git checkout -- .      Undo local modifications to all files.
+git reset HEAD myfile  Unstage a file.
+
+Tags.
+git pull --tags        Get remote tags.
+git checkout tag_name  Switch to an existing tag.
+git tag                List all tags.
+git tag -a tag_name -m "tag message"  Create a new tag.
+git push --tags        Push all tags to remote repo.
+
+Stashes.
+git stash save "stash name" && git stash  Save changes to a stash.
+git stash list  List all stashes.
+git stash pop   Apply a stash and delete it from stash list.
+==================================================
+Postgresql in docker
+(tags: postgresql docker)
+---
+
+docker run --name some-postgres -e POSTGRES_PASSWORD=mysecretpassword -d -p 5433:5432 postgres
+docker exec -it some-postgres bash
+su postgres
+psql
+  \l - list of databases
+  \c dbname - switch to database
+    \dt - list of tables
+    \d table - struct of table
+    \du - list of users and permissions
+    \dt+ - list of tables with descriptions
+    \dt *s* - list of tables that contains "s" in name
+    \i FILE - exec commands from FILE
+    \o FILE - save result into FILE.
+    \a - swith aligment mode
+  \? - list of all commands
+  \q - quit
+==================================================
+Reverse Igeneering with android apk on Windows
+(tags: ri android apk windows)
+---
+
+1. Download apk from PlayMarket or from special site
+2. Installed apk in android device - data/app
+3. Cope apk to PC
+4. Install apktool and Sign (instructions - https://androidp1.ru/dekompilyatsiya-apk-prilozheniya-android/)
+  (apktool - https://bitbucket.org/iBotPeaches/apktool/downloads/)
+  (folder with Sign - https://clouds.androidp1.ru/2o/Sign.zip)
+5. Copy all to C:/apktool/
+6. Rename apk for simple usage, example app.apk
+7. In PowerShell: ./apktool d app.apk
+8. In folder "C:/apktool/app/" change .smali files how you want and save
+9. From C:/apktool/ folder exec in PowerShell: ./apktool b app
+10. Copy C:/apktool/app/dist/app.apk into folder C:/apktool/Sign
+11. Drag and drop app.apk on aign_APK.bat icon
+12. Created apk_signed.apk copy to device and install
+==================================================
+Using gRPC
+(tags: grpc protobuf)
+---
+
+// apt install golang-goprotobuf-dev
+// go get github.com/golang/protobuf/protoc-gen-go
+// /home/app# protoc -I=/home/app --go_out=/home/app /home/app/tutorial/tutorial.proto
+
+// /home/app/tutorail/tutorial.proto
+syntax = "proto3";
+package tutorial;
+
+import "google/protobuf/timestamp.proto";
+
+message Person {
+  string name = 1;
+  int32 id = 2;  // Unique ID number for this person.
+  string email = 3;
+
+  enum PhoneType {
+    MOBILE = 0;
+    HOME = 1;
+    WORK = 2;
+  }
+
+  message PhoneNumber {
+    string number = 1;
+    PhoneType type = 2;
+  }
+
+  repeated PhoneNumber phones = 4;
+
+  google.protobuf.Timestamp last_updated = 5;
+}
+
+// Our address book file is just one of these.
+message AddressBook {
+  repeated Person people = 1;
+}
+
+
+// /home/app/list_people.go
+package main
+
+import (
+  "fmt"
+  "io"
+  "io/ioutil"
+  "log"
+  "os"
+  pb "./tutorial"
+  "github.com/golang/protobuf/proto"
+)
+
+func writePerson(w io.Writer, p *pb.Person) {
+  fmt.Fprintln(w, "Person ID:", p.Id)
+  fmt.Fprintln(w, "  Name:", p.Name)
+  if p.Email != "" {
+    fmt.Fprintln(w, "  E-mail address:", p.Email)
+  }
+
+  for _, pn := range p.Phones {
+    switch pn.Type {
+    case pb.Person_MOBILE:
+      fmt.Fprint(w, "  Mobile phone #: ")
+    case pb.Person_HOME:
+      fmt.Fprint(w, "  Home phone #: ")
+    case pb.Person_WORK:
+      fmt.Fprint(w, "  Work phone #: ")
+    }
+    fmt.Fprintln(w, pn.Number)
+  }
+}
+
+func listPeople(w io.Writer, book *pb.AddressBook) {
+  for _, p := range book.People {
+    writePerson(w, p)
+  }
+}
+
+// Main reads the entire address book from a file and prints all the
+// information inside.
+func main() {
+  if len(os.Args) != 2 {
+    log.Fatalf("Usage:  %s ADDRESS_BOOK_FILE\n", os.Args[0])
+  }
+  fname := os.Args[1]
+
+  // [START unmarshal_proto]
+  // Read the existing address book.
+  in, err := ioutil.ReadFile(fname)
+  if err != nil {
+    log.Fatalln("Error reading file:", err)
+  }
+  book := &pb.AddressBook{}
+  if err := proto.Unmarshal(in, book); err != nil {
+    log.Fatalln("Failed to parse address book:", err)
+  }
+  // [END unmarshal_proto]
+
+  listPeople(os.Stdout, book)
+}
+
+// /home/app/list_people_test.go
+package main
+
+import (
+  "bytes"
+  "strings"
+  "testing"
+  pb "./tutorial"
+)
+
+func TestWritePersonWritesPerson(t *testing.T) {
+  buf := new(bytes.Buffer)
+  // [START populate_proto]
+  p := pb.Person{
+    Id:    1234,
+    Name:  "John Doe",
+    Email: "jdoe@example.com",
+    Phones: []*pb.Person_PhoneNumber{
+      {Number: "555-4321", Type: pb.Person_HOME},
+    },
+  }
+  // [END populate_proto]
+  writePerson(buf, &p)
+  got := buf.String()
+  want := `Person ID: 1234
+  Name: John Doe
+  E-mail address: jdoe@example.com
+  Home phone #: 555-4321
+`
+  if got != want {
+    t.Errorf("writePerson(%s) =>\n\t%q, want %q", p.String(), got, want)
+  }
+}
+
+
+
+
