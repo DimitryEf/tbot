@@ -316,6 +316,12 @@ Measure func call duration
 (tags: measure func call duration time)
 ---
 
+t := time.Now()
+foo()
+fmt.Printf("%dns\n", time.Since(t).Nanoseconds())
+
+or
+
 t1 := time.Now()
 foo()
 t := time.Since(t1)
@@ -1050,7 +1056,7 @@ tree -d --filelimit 26
 // print hiden dir, sort by depth, show modify date
 tree -avD
 // print files that matched template, do not show dir that gave not needed files
-tree -P '*.pdf' --prune
+tree -P '*.pdf' --pruneupdate
 // write three with dir into a file
 tree -d -o tree_command_results.txt
 // print size, user, permissions, full path
@@ -4495,7 +4501,7 @@ func main() {
   }
 }
 ==================================================
-Ispect payload from ftp packets using pcap
+Inspect payload from ftp packets using pcap
 (tags: pcap packet ftp payload)
 ---
 
@@ -5489,6 +5495,12 @@ use grafana
 show measurements
 // show series
 select * from mytablename limit 1
+
+// https://ru.wikipedia.org/wiki/InfluxDB
+Недостатки:
+- нет update. для этого используется вставка с тем же ключом (временем)
+- delete очень долгий (от нескольких секунд на удаление одной записи) и не поддерживает фильтрацию для удаления с использованием колонок (можно с использованием Тэгов или Времени)
+- при добавлении нового тега, фильтр по этому тегу для существующих данных недоступен
 ==================================================
 Shutdown linux
 (tags: shutdown linux)
@@ -6201,7 +6213,7 @@ Linux curl
 (tags: linux curl)
 ---
 
-// Downloat file and show it in output
+// Download file and show it in output
 curl https://raw.githubusercontent.com/curl/curl/master/README.md
 // Download into file
 curl -o readme.txt https://raw.githubusercontent.com/curl/curl/master/README.md
@@ -6242,6 +6254,8 @@ curl -H "Content-Type: application/json" \
   -X POST \
   -d '{"username":"xyz","password":"xyz"}' \
   http://localhost:3000/api/login
+// Send file
+curl POST -d @path/to/file http://user:pass@myhost:myport/path/of/url
 ==================================================
 Elasticsearch in docker
 (tags: elasticsearch docker)
@@ -6647,13 +6661,9 @@ Running Gitlab in docker container
 (tags: gitlab docker)
 ---
 
-// add some host to /etc/hosts
-nano /etc/hosts
-127.0.0.1 myagitlab.com
-
 // run container
 docker run --detach \
-  --hostname mygitlab.com \
+  --hostname gitlab \
   --publish 443:443 --publish 8880:80 --publish 22:22 \
   --name gitlab \
   --restart always \
@@ -6662,7 +6672,55 @@ docker run --detach \
   --volume $GITLAB_HOME/data:/var/opt/gitlab \
   gitlab/gitlab-ee:latest
 
-// wait and try mygitlab.com:8880
+// wait and try http://localhost:8880
+// set pass
+// push your project into gitlab repository or clone
+
+// run gitlab-runner
+docker run -d --name gitlab-runner --restart always \
+  -v /srv/gitlab-runner/config:/etc/gitlab-runner \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  gitlab/gitlab-runner:latest
+
+// create common network
+docker network create gitlab-network
+docker network connect gitlab-network gitlab
+docker network connect gitlab-network gitlab-runner
+
+// enter into gitlab-runner container
+docker exec -it gitlab-runner bash
+gitlab-runner register --docker-network-mode gitlab-network
+// for unregister: gitlab-runner unregister --url http://gitlab --token -e3TaynkopkA-DaXpzy3
+// get token for unregister by command: gitlab-runner list
+// use name of gitlab container for Gitlab unstance URL
+http://gitlab
+// use token from http://localhost:8880/ -> Settings -> CI/CD -> Runners
+some description
+some-tag
+docker
+golang:latest
+// update http://localhost:8880/...
+// in runner settings enable "Run untagged jobs"
+
+// in project add .gitlab-ci.yml file with content like this:
+stages:
+  - compile
+  - test
+
+build:
+  stage: compile
+  image: golang:latest
+  script:
+    - go build -mod=vendor -o bin/app -v cmd/greeter/main.go
+
+test:
+  stage: test
+  image: golang:latest
+  script:
+    - echo "this is stage test"
+
+// push changes into repository
+// see http://localhost:8880/ -> CI/CD -> Pipelines
 ==================================================
 Reading gzipped HTTP response
 (tags: gzip http)
@@ -8057,7 +8115,7 @@ psql
   \? - list of all commands
   \q - quit
 ==================================================
-Reverse Igeneering with android apk on Windows
+Reverse Engineering with android apk on Windows
 (tags: ri android apk windows)
 ---
 
@@ -8212,7 +8270,3446 @@ func TestWritePersonWritesPerson(t *testing.T) {
     t.Errorf("writePerson(%s) =>\n\t%q, want %q", p.String(), got, want)
   }
 }
+==================================================
+Slice tricks
+(tags: slice trick)
+---
 
+https://github.com/golang/go/wiki/SliceTricks
 
+// AppendVector
+a = append(a, b...)
 
+// Copy
+b = make([]T, len(a))
+copy(b, a)
+// These two are often a little slower than the above one,
+// but they would be more efficient if there are more
+// elements to be appended to b after copying.
+b = append([]T(nil), a...)
+b = append(a[:0:0], a...)
 
+// Cut
+a = append(a[:i], a[j:]...)
+
+//Delete
+a = append(a[:i], a[i+1:]...)
+// or
+a = a[:i+copy(a[i:], a[i+1:])]
+
+// Delete without preserving order
+a[i] = a[len(a)-1]
+a = a[:len(a)-1]
+
+NOTE If the type of the element is a pointer or a struct with pointer fields, which need to be garbage collected, the above implementations of Cut and Delete have a potential memory leak problem: some elements with values are still referenced by slice a and thus can not be collected. The following code can fix this problem:
+
+// Cut without memory leak
+copy(a[i:], a[j:])
+for k, n := len(a)-j+i, len(a); k < n; k++ {
+  a[k] = nil // or the zero value of T
+}
+a = a[:len(a)-j+i]
+
+// Delete without memory leak
+copy(a[i:], a[i+1:])
+a[len(a)-1] = nil // or the zero value of T
+a = a[:len(a)-1]
+
+// Delete without memory leak and without preserving order
+a[i] = a[len(a)-1]
+a[len(a)-1] = nil
+a = a[:len(a)-1]
+
+// Expand
+a = append(a[:i], append(make([]T, j), a[i:]...)...)
+
+// Extend
+a = append(a, make([]T, j)...)
+
+// Filter (in place)
+n := 0
+for _, x := range a {
+  if keep(x) {
+    a[n] = x
+    n++
+  }
+}
+a = a[:n]
+
+// Insert
+a = append(a[:i], append([]T{x}, a[i:]...)...)
+
+NOTE: The second append creates a new slice with its own underlying storage and copies elements in a[i:] to that slice, and these elements are then copied back to slice a (by the first append). The creation of the new slice (and thus memory garbage) and the second copy can be avoided by using an alternative way:
+
+// Insert
+s = append(s, 0 /* use the zero value of the element type */)
+copy(s[i+1:], s[i:])
+s[i] = x
+
+// InsertVector
+a = append(a[:i], append(b, a[i:]...)...)
+
+NOTE: To get the best efficiency, it is best to do the insertion without using append, in particular when the number of the inserted elements is known:
+
+// Assume element type is int.
+func Insert(s []int, k int, vs ...int) []int {
+  if n := len(s) + len(vs); n <= cap(s) {
+    s2 := s[:n]
+    copy(s2[k+len(vs):], s[k:])
+    copy(s2[k:], vs)
+    return s2
+  }
+  s2 := make([]int, len(s) + len(vs))
+  copy(s2, s[:k])
+  copy(s2[k:], vs)
+  copy(s2[k+len(vs):], s[k:])
+  return s2
+}
+a = Insert(a, i, b...)
+
+// Push
+a = append(a, x)
+
+// Pop
+x, a = a[len(a)-1], a[:len(a)-1]
+
+// Push Front/Unshift
+a = append([]T{x}, a...)
+
+//Pop Front/Shift
+x, a = a[0], a[1:]
+
+Additional Tricks
+
+// Filtering without allocating
+
+This trick uses the fact that a slice shares the same backing array and capacity as the original, so the storage is reused for the filtered slice. Of course, the original contents are modified.
+b := a[:0]
+for _, x := range a {
+  if f(x) {
+    b = append(b, x)
+  }
+}
+
+For elements which must be garbage collected, the following code can be included afterwards:
+
+for i := len(b); i < len(a); i++ {
+  a[i] = nil // or the zero value of T
+}
+
+// Reversing
+
+To replace the contents of a slice with the same elements but in reverse order:
+
+for i := len(a)/2-1; i >= 0; i-- {
+  opp := len(a)-1-i
+  a[i], a[opp] = a[opp], a[i]
+}
+
+The same thing, except with two indices:
+
+for left, right := 0, len(a)-1; left < right; left, right = left+1, right-1 {
+  a[left], a[right] = a[right], a[left]
+}
+==================================================
+Windows find all ip of computers in local network
+(tags: windows ip local)
+---
+
+arp -a
+==================================================
+Linux find all ip of computers in local network
+(tags: linux ip local)
+---
+
+apt install nmap
+nmap -sP 192.168.0.1/24
+==================================================
+Linux screen - add new resolution
+(tags: linux screen)
+---
+
+xrandr
+xrandr --output Virtual1 --mode 1920x1080
+// if error "xrandr: cannot find mode 1920x1080" do this
+cvt 1920 1080 60
+// copy ouput after Modeline
+xrandr --newmode "1920x1080_60.00"  173.00  1920 2048 2248 2576  1080 1083 1088 1120 -hsync +vsync
+xrandr --addmode Virtual1 1920x1080_60.00
+xrandr --output Virtual1 --mode 1920x1080_60.00
+
+// write sript in file
+vi ~/.xprofile
+#!/bin/bash
+xrandr --output Virtual1 --mode 1920x1080_60.00
+==================================================
+Using redis in docker
+(tags: redis docker)
+---
+
+docker run -d --name some-redis -p 6379:6379 redis
+docker exec -it some-redis bash
+redis-cli
+keys * // show all keys
+==================================================
+Mock redis
+(tags: mock redis)
+---
+
+"github.com/alicebob/miniredis/v2"
+"github.com/go-redis/redis/v7"
+
+s, err := miniredis.Run()
+if err != nil {
+  panic(err)
+}
+defer s.Close()
+redisClient := redis.NewClient(&redis.Options{
+  Addr:     s.Addr(),
+  Password: "",
+  DB:       0,
+})
+==================================================
+Exec program on linux without password
+(tags: linux exec sudo password)
+---
+
+sudo visudo
+// /etc/sudoers.tmp
+// append string like this:
+username ALL=NOPASSWD:/bin/mkdir,/bin/chmod
+==================================================
+Parallel exec program in bash script
+(tags: bash parallel exec)
+---
+
+#!/bin/bash
+
+program1 &
+program2 &
+program3 &
+
+// for stop all
+// pkill -f "program"
+==================================================
+Replace word in many files bash
+(tags: replace word bash)
+---
+
+find . -name "filename" -print0 | xargs -0 sed -i 's/old/new/g'
+==================================================
+Copy map
+(tags: copy map)
+---
+
+for k, v := range originalMap {
+  newMap[k] = v
+}
+==================================================
+Show content of many files in bash
+(tags: bash file content)
+---
+
+/wave/data# find . -type f -name "dict.csv" -print0  | xargs -r0 grep -H '' | sort
+==================================================
+Connect to websocket from browser
+(tags: connect websocket browser)
+---
+
+//connect
+ws = new WebSocket("ws://127.0.0.1:9001/"); ws.onmessage = ({data}) => console.log("FROM SERVER: ", data);
+
+//send message
+ws.send("Privet!");
+==================================================
+Measure func call duration in bash
+(tags: measure func call duration time bash)
+---
+
+#!/bin/bash
+START=$(date +%s)
+# do something
+echo "It took $(( $(date +%s) - $START )) seconds"
+==================================================
+Using json extension in sqlite
+(tags: measure func call duration time bash)
+---
+
+select json_extract(s.json_column, '$.json_field') as field from tablename1
+
+// in golang project
+import _ "github.com/mattn/go-sqlite3"
+// build
+go build -tags json1 main.go
+==================================================
+LRU cache implementation
+(tags: lru cache)
+---
+
+https://github.com/hashicorp/golang-lru
+https://dotzero.blog/golang-lru/
+
+LRU-кэш. Это такой вид кэша, когда есть ограниченное количество элементов, и новые значения вытесняют старые. Причём, если мы обращаемся к элементу часто, то он поднимается наверх и не вытесняется из кэша. Таким образом мы закэшируем все часто используемые значения, а все редко используемые не будут храниться в кэше.
+
+import (
+  "container/list"
+)
+
+type Item struct {
+  Key   string
+  Value interface{}
+}
+
+type LRU struct {
+  capacity int
+  items    map[string]*list.Element
+  queue    *list.List
+}
+
+func NewLru(capacity int) *LRU {
+  return &LRU{
+    capacity: capacity,
+    items:    make(map[string]*list.Element),
+    queue:    list.New(),
+  }
+}
+
+func (c *LRU) Set(key string, value interface{}) bool {
+  if element, exists := c.items[key]; exists == true {
+    c.queue.MoveToFront(element)
+    element.Value.(*Item).Value = value
+    return true
+  }
+
+  if c.queue.Len() == c.capacity {
+    c.purge()
+  }
+
+  item := &Item{
+    Key:   key,
+    Value: value,
+  }
+
+  element := c.queue.PushFront(item)
+  c.items[item.Key] = element
+
+  return true
+}
+
+func (c *LRU) purge() {
+  if element := c.queue.Back(); element != nil {
+    item := c.queue.Remove(element).(*Item)
+    delete(c.items, item.Key)
+  }
+}
+
+func (c *LRU) Get(key string) interface{} {
+  element, exists := c.items[key]
+  if exists == false {
+    return nil
+  }
+  c.queue.MoveToFront(element)
+  return element.Value.(*Item).Value
+}
+==================================================
+Recursive query postgresql sqlite
+(tags: recursive postgresql sqlite)
+---
+
+WITH RECURSIVE nodes(id,name,parent_id) AS (
+  SELECT s1.id, s1.name, s1.parent_id
+  FROM equipment s1 WHERE parent_id = 44
+  UNION
+  SELECT s2.id, s2.name, s2.parent_id
+  FROM equipment s2, nodes s1 WHERE s2.parent_id = s1.id
+)
+SELECT * FROM nodes;
+==================================================
+File md5 hash
+(tags: file md5 hash)
+---
+
+https://mrwaggel.be/post/generate-md5-hash-of-a-file-in-golang/
+
+package main
+
+import (
+  "crypto/md5"
+  "encoding/hex"
+  "fmt"
+  "io"
+  "os"
+)
+
+func hashFileMD5(filePath string) (string, error) {
+  var returnMD5String string
+  file, err := os.Open(filePath)
+  if err != nil {
+    return returnMD5String, err
+  }
+  defer file.Close()
+  hash := md5.New()
+  if _, err := io.Copy(hash, file); err != nil {
+    return returnMD5String, err
+  }
+  hashInBytes := hash.Sum(nil)[:16]
+  returnMD5String = hex.EncodeToString(hashInBytes)
+  return returnMD5String, nil
+
+}
+
+func main() {
+  hash, err := hashFileMD5(os.Args[0]) //os.Args[1]
+  if err == nil {
+    fmt.Println(hash)
+  }
+}
+==================================================
+Linux bugs
+(tags: linux bug)
+---
+
+// if you got a covering invisible area
+pkill -f "draganddrop"
+// xprop and click on covering invisible area
+
+// if you have a black screen after enter, press
+Ctrl+Alt+F1
+
+// if you have OS behavior with "pressed" ctrl, change the language couple times
+==================================================
+Create trigger on postgresql
+(tags: trigger postgresql)
+---
+
+-- создаем таблицу module
+create table module
+(
+  id bigint not null,
+  name character varying,
+  name_old character varying
+)
+
+-- заполняем ее тестовыми данными
+insert into module (id, name) values (1, 'name_1'), (2, 'name_2'), (3, 'name_3')
+
+-- проверяем
+select * from module
+
+-- создаем функцию для триггера
+create or replace function save_old_value()
+returns trigger as
+$$
+begin
+new.name_old = old.name;
+return new;
+end;
+$$ LANGUAGE plpgsqll
+
+-- создаем сам триггер
+create trigger t_module
+before update on module for each row
+execute procedure save_old_value()
+
+-- обновляем запись в таблице
+update module set name = 'new_name' where id = 2
+
+-- проверяем
+select * from module
+==================================================
+Run go with docker without go
+(tags: docker golang)
+---
+
+docker run --rm "$PWD":"$PWD" -w "$PWD" golang:1.14 go run main.go
+==================================================
+Static compile golang
+(tags: static compile golang)
+---
+
+CGO_ENABLED=0 go build -a -installsuffix cgo -ldflags '-s' src/myapp/myapp.go
+==================================================
+Convert postgres timestamp in golang
+(tags: postgresql timestamp golang)
+---
+
+time1 := time.Now().UnixNano()
+fmt.Println(time1)
+time2 := time.Unix(0, time1)
+fmt.Println(time2)
+time3 := time2.Format("2006-01-02T15:04:05.000000Z")
+fmt.Println(time3)
+// select * from table1 where modified_at > '2021-03-23T10:39:03.288802Z'
+// this working with sqlite too
+==================================================
+Check is interface convertible to
+(tags: check convert interface)
+---
+
+var x interface{} = 2.3
+if reflect.Indirect(reflect.ValueOf(x)).Type().ConvertibleTo(reflect.TypeOf(float64(0))) {
+  fmt.Println("x is convertible to float64")
+}
+
+// or
+var x interface{} = []int{1, 2, 3}
+xType := fmt.Sprintf("%T", x)
+fmt.Println(xType) // "[]int"
+
+// or
+var x interface{} = 2.3
+switch v := x.(type) {
+case int:
+  fmt.Println("int:", v)
+case float64:
+  fmt.Println("float64:", v)
+default:
+  fmt.Println("unknown")
+} // "float64: 2.3"
+
+// or
+var x interface{} = []int{1, 2, 3}
+xType := reflect.TypeOf(x)
+xValue := reflect.ValueOf(x)
+fmt.Println(xType, xValue) // "[]int [1 2 3]"
+==================================================
+Golang types
+(tags: golang type)
+---
+
+https://metanit.com/go/tutorial/2.3.php
+
+// golang types
+int8: представляет целое число от -128 до 127 и занимает в памяти 1 байт (8 бит)
+int16: представляет целое число от -32768 до 32767 и занимает в памяти 2 байта (16 бит)
+int32: представляет целое число от -2147483648 до 2147483647 и занимает 4 байта (32 бита)
+int64: представляет целое число от –9 223 372 036 854 775 808 до 9 223 372 036 854 775 807 и занимает 8 байт (64 бита)
+uint8: представляет целое число от 0 до 255 и занимает 1 байт
+uint16: представляет целое число от 0 до 65535 и занимает 2 байта
+uint32: представляет целое число от 0 до 4294967295 и занимает 4 байта
+uint64: представляет целое число от 0 до 18 446 744 073 709 551 615 и занимает 8 байт
+byte: синоним типа uint8, представляет целое число от 0 до 255 и занимает 1 байт
+rune: синоним типа int32, представляет целое число от -2147483648 до 2147483647 и занимает 4 байта
+int: представляет целое число со знаком, которое в зависимости о платформы может занимать либо 4 байта, либо 8 байт. То есть соответствовать либо int32, либо int64.
+uint: представляет целое беззнаковое число только без знака, которое, аналогично типу int, в зависимости о платформы может занимать либо 4 байта, либо 8 байт. То есть соответствовать либо uint32, либо uint64.
+==================================================
+Life of http request in golang server
+(tags: life http request golang server)
+---
+
+https://eli.thegreenplace.net/2021/life-of-an-http-request-in-a-go-server/
+
+package main
+
+import (
+  "fmt"
+  "net/http"
+)
+
+func hello(w http.ResponseWriter, req *http.Request) {
+  fmt.Fprintf(w, "hello\n")
+}
+
+func headers(w http.ResponseWriter, req *http.Request) {
+  for name, headers := range req.Header {
+    for _, h := range headers {
+      fmt.Fprintf(w, "%v: %v\n", name, h)
+    }
+  }
+}
+
+func main() {
+  http.HandleFunc("/hello", hello)
+  http.HandleFunc("/headers", headers)
+
+  http.ListenAndServe(":8090", nil)
+}
+
+1. ListenAndServe содержит внутри net.Listen("tcp",...) и для каждого нового соединения запускает горутинуЮ которая в бесконечном цикле выполняет handler.ServeHTTP.
+2. Если handler был указан как nil, то в ServeHTTP будет использован DefaultServeMux - это глобальный объект http.ServeMux. Как раз используюя http.HandleFunc мы регистрируем функции к этому глобальному
+3. Если возникнет паника в функции хенжлера, то сервер все равно продолжит работу
+
+// Middleware
+func politeGreeting(w http.ResponseWriter, req *http.Request) {
+  fmt.Fprintf(w, "Welcome! Thanks for visiting!\n")
+}
+
+func loggingMiddleware(next http.Handler) http.Handler {
+  return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+    start := time.Now()
+    next.ServeHTTP(w, req)
+    log.Printf("%s %s %s", req.Method, req.RequestURI, time.Since(start))
+  })
+}
+
+func main() {
+  lm := loggingMiddleware(http.HandlerFunc(politeGreeting))
+  log.Fatal(http.ListenAndServe(":8090", lm))
+}
+==================================================
+Golang darker coreners
+(tags: golang dark)
+---
+
+https://rytisbiel.com/2021/03/06/darker-corners-of-go/
+
+// Если не хочешь удалять неиспользуемый импорт
+var _ = math.Round
+
+// Выполнится функция init() из пакета package1
+import _ package1
+
+// Позволят использовать функции пакета, но лучше так не делать
+import . "math"   // Sin(3)
+
+// Приоритет операторов
+Go:
+  5  * / % << >> & &^
+  4  + - | ^
+  3  == != < <= > >=
+  2  &&
+  1  ||
+C:
+  10  *, /, %
+  9   +, -
+  8   <<, >>
+  7   <, <=, >, >=
+  6   ==, !=
+  5   &
+  4   ^
+  3   |
+  2   &&
+  1   ||
+In Go: 1 << 1 + 1 // (1<<1)+1 = 3
+In C: 1 << 1 + 1 // 1<<(1+1) = 4
+In Go: ^1 // -2
+In C: ~1 // -2
+
+// iota
+const (
+    myconst = "c"
+    myconst2 = "c2"
+    two = iota // 2
+)
+
+// slice
+var s []int // nil slice
+fmt.Println(s, len(s), cap(s)) // [] 0 0
+s = append(s, 1)
+fmt.Println(s, len(s), cap(s)) // [1] 1 1
+
+// make slice
+s := make([]int, 3)
+s = append(s, 1)
+s = append(s, 2)
+s = append(s, 3)
+fmt.Println(s) // [0 0 0 1 2 3]
+saddr := &s[0]
+*saddr = 5
+fmt.Println(s) // [5 0 0 1 2 3]
+
+// string for range
+s := "touché"
+for i := 0; i < len(s); i++ { // prints every byte
+  fmt.Print(string(s[i]))     // touchÃ©
+}
+for _, r := range s {  // prints every rune
+  fmt.Print(string(r)) // touché
+}
+r := []rune(s)
+for i := 0; i < len(r); i++ {  // convert a string to rune slice to access by index
+  fmt.Print(string(r[i]))      // touché
+}
+
+// map
+var m map[int]int // a nil map
+fmt.Println(len(m)) // taking len of a nil map is OK. prints 0
+fmt.Println(m[10]) // reading nil map is OK. prints 0 (the default of the map value type)
+val, keyexists := m[10]
+fmt.Println(val, keyexists) // 0, false
+m[10] = 1 // panic: assignment to entry in nil map
+m2 := map[int]int{1: 1}
+addr := &m2[1] // error: cannot take the address of m2[1]
+
+// empty struct
+fmt.Println(unsafe.Sizeof(false)) // 1
+fmt.Println(unsafe.Sizeof(struct{}{})) // 0
+
+// interface
+type ISayHi interface {Say()}
+type SayHi struct{}
+func main() {
+  // at this point variable “sayer” only has the static type of ISayHi
+  // dynamic type and value are nil
+  var sayer ISayHi
+  // as expected sayer equals to nil
+  fmt.Println(sayer == nil) // true
+  // a nil variable of a concrete type
+  var sayerImplementation *SayHi
+  // dynamic type of the interface variable is now SayHi
+  // the actual value interface points to is still nil
+  sayer = sayerImplementation
+  // sayer no longer equals to nil, because its dynamic type is set
+  // even though the value it points to is nil
+  // which is not what most people would expect here
+  fmt.Println(sayer == nil) // false
+}
+// you can not check if the value an interface points to is ni
+func MyFunc() ISayHi {var result *SayHi; return result} // do not do this! MyFunc() == nil would be false
+func MyFunc() ISayHi {return nil} // MyFunc() == nil would be true
+func IsInterfaceNil(i interface{}) bool {
+  if i == nil {
+    return false
+  }
+  rvalue := reflect.ValueOf(i)
+  return rvalue.Kind() == reflect.Ptr && rvalue.IsNil()
+}
+
+// type assertion
+func main() {
+  var sayer ISayHi
+  sayer = &SayHi{}
+  // t will be a zero value (nil in this case) of type *SayHi2
+  // ok will be false
+  t, ok := sayer.(*SayHi2)
+  if ok {
+      t.Say()
+  }
+  // panic: interface conversion:
+  // main.ISayHi is *main.SayHi, not *main.SayHi2
+  t2 := sayer.(*SayHi2)
+  t2.Say()
+}
+
+// embededding
+type t1 struct {f1 string}
+func (t *t1) t1method() {}
+// embedding type
+type t2 struct {t1}
+// redefining type
+type t3 t1
+func main() {
+  var mt1 t1
+  var mt2 t2
+  var mt3 t3
+  // fields are inherited in all the cases
+  _ = mt1.f1
+  _ = mt2.f1
+  _ = mt3.f1
+  // these work ok
+  mt1.t1method()
+  mt2.t1method()
+  // mt3.t1method undefined (type t3 has no field or method t1method)
+  mt3.t1method()
+}
+
+// compare
+type compareStruct1 struct {
+  A int
+  B string
+  C [3]int
+}
+type compareStruct2 struct {
+  A int
+  B string
+  C []int // changed type of C from array to slice
+}
+func main() {
+  s1 := compareStruct1{}
+  s2 := compareStruct1{}
+  fmt.Println(s1 == s2) // works fine, prints true
+  s3 := compareStruct2{}
+  s4 := compareStruct2{}
+  // invalid operation: s3 == s4
+  // (struct containing []int cannot be compared)
+  fmt.Println(s3 == s4)
+}
+func (s *compareStruct2) Equals(s2 *compareStruct2) bool {
+  if s.A != s2.A || s.B != s2.B || len(s.C) != len(s2.C) {
+    return false
+  }
+  for i := 0; i < len(s.C); i++ {
+    if s.C[i] != s2.C[i] {
+      return false
+    }
+  }
+  return true
+}
+// slow variant
+reflect.DeepEqual(s, s2) // not working for func and float with NaN
+==================================================
+Get parameter from url
+(tags: parameter url)
+---
+
+func decodeRequest(_ context.Context, r *http.Request) (interface{}, error) {
+  keys, ok := r.URL.Query()["key"]
+  if !ok || len(keys[0]) < 1 {
+    return nil, fmt.Errorf("url parameter key is missing")
+  }
+  keyStr := keys[0]
+  return keyStr, nil
+}
+==================================================
+Using sqlite in memory
+(tags: sqlite memory)
+---
+
+db, err = sql.Open("sqlite3", "file::memory:?cache=shared")
+==================================================
+Wrap errors in golang
+(tags: wrap error)
+---
+
+package main
+
+import (
+  "errors"
+  "fmt"
+  "os"
+)
+
+var (
+  ErrF3 = errors.New("f3 error")
+  ErrF4 = errors.New("f4 error")
+  PathErr = &os.PathError{}
+)
+
+func main() {
+  err1 := f1()
+  fmt.Println(err1) // f1 error: f2 error: f3 error
+  err2 := f2()
+  fmt.Println(err2) // f2 error: f3 error
+  err3 := f3()
+  fmt.Println(err3) // f3 error
+
+  // if err1 contains same value
+  fmt.Println(errors.Is(err1, err1)) // true
+  fmt.Println(errors.Is(err1, err2)) // false
+  fmt.Println(errors.Is(err1, err3)) // true
+  fmt.Println(errors.Is(err3, err1)) // false
+
+  fmt.Println(errors.Is(err1, ErrF3)) // true
+  fmt.Println(errors.Is(err1, ErrF4)) // false
+  fmt.Println(errors.Is(err3, ErrF4)) // false
+
+  // if errors has same type
+  fmt.Println(errors.As(err1, &ErrF3))   // true
+  fmt.Println(errors.As(err1, &PathErr)) // false
+
+  fmt.Println(ErrF4) // f4 error
+  fmt.Println(errors.Is(err1, ErrF4))  // false
+  // As - puts err1 into ErrF4
+  fmt.Println(errors.As(err1, &ErrF4)) // true
+  fmt.Println(errors.Is(err1, ErrF4))  // true
+  fmt.Println(ErrF4) // f1 error: f2 error: f3 error
+
+  fmt.Println(errors.Is(err3, err1)) // false
+
+  fmt.Println(errors.Unwrap(err3)) // <nil>
+  fmt.Println(errors.Unwrap(err2)) // f3 error
+  fmt.Println(errors.Unwrap(err1)) // f2 error: f3 error
+  fmt.Println(errors.Unwrap(errors.Unwrap(err1))) // f3 error
+}
+
+func f1() error {
+  err := f2()
+  return fmt.Errorf("f1 error: %w", err)
+}
+
+func f2() error {
+  err := f3()
+  return fmt.Errorf("f2 error: %w", err)
+}
+
+func f3() error {
+  return ErrF3
+}
+==================================================
+Write log in stdout and file
+(tags: log stdout file)
+---
+
+f, err := os.OpenFile("/mylogs.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+if err != nil {
+    log.Fatalf("error opening file: %v", err)
+}
+defer f.Close()
+wrt := io.MultiWriter(os.Stdout, f)
+log.SetOutput(wrt)
+log.Println("some info")
+==================================================
+4D slice
+(tags: 4d slice)
+---
+
+arr := [][][][]float64{{{{1111, 1112}, {1121, 1122}}, {{1211, 1212}, {1221, 1222}}}, {{{2111, 2112}, {2121, 2122}}, {{2211, 2212}, {2221, 2222}}}}
+fmt.Println(arr) //[[[[1111 1112] [1121 1122]] [[1211 1212] [1221 1222]]] [[[2111 2112] [2121 2122]] [[2211 2212] [2221 2222]]]]
+
+JU := 2
+JI := 2
+JT := 2
+JP := 2
+
+// 4D -> 1D
+n := 0
+res := make([]float64, JU*JI*JT*JP)
+for u := 0; u < JU; u++ {
+  for i := 0; i < JI; i++ {
+    for t := 0; t < JT; t++ {
+      for p := 0; p < JP; p++ {
+        res[n] = arr[u][i][t][p]
+        n++
+      }
+    }
+  }
+}
+fmt.Println(res) //[1111 1112 1121 1122 1211 1212 1221 1222 2111 2112 2121 2122 2211 2212 2221 2222]
+
+// 1D -> 4D
+arr4d := make([][][][]float64, 0)
+arr3d := make([][][]float64, 0)
+arr2d := make([][]float64, 0)
+arr1d := make([]float64, 0)
+n = 0
+for u := 0; u < JU; u++ {
+  for i := 0; i < JI; i++ {
+    for t := 0; t < JT; t++ {
+      for p := 0; p < JP; p++ {
+        arr1d = append(arr1d, res[n])
+        n++
+      }
+      arr2d = append(arr2d, arr1d)
+      arr1d = nil
+    }
+    arr3d = append(arr3d, arr2d)
+    arr2d = nil
+  }
+  arr4d = append(arr4d, arr3d)
+  arr3d = nil
+}
+fmt.Println(arr4d) //[[[[1111 1112] [1121 1122]] [[1211 1212] [1221 1222]]] [[[2111 2112] [2121 2122]] [[2211 2212] [2221 2222]]]]
+==================================================
+Convert int to time
+(tags: convert int time)
+---
+
+var i int = 5
+time.Sleep(time.Duration(i) * time.Second)
+//time.Sleep(i * time.Second) // not working
+//time.Sleep(5 * time.Second) // working
+==================================================
+Error with stacktrace
+(tags: error stacktrace)
+---
+
+package main
+
+import (
+  "fmt"
+  "log"
+  "runtime"
+)
+
+func stacktraceTest() {
+  err := f1()
+  log.Println(Wrap(err))
+  //2021/04/15 19:18:56 "main.stacktraceTest(_/D_/projects/go/experiment/stacktrace.go:32)":
+  //  "main.f1(_/D_/projects/go/experiment/stacktrace.go:38)":
+  //  "main.f2(_/D_/projects/go/experiment/stacktrace.go:42)":
+  //  error from f2
+}
+
+func f1() error {
+  err := f2()
+  //return Wrap(fmt.Errorf("error from f1:\n%v", err))
+  return Wrap(err)
+}
+
+func f2() error {
+  return Wrap(fmt.Errorf("error from f2"))
+}
+
+func Wrap(err error) error {
+  if err != nil {
+    return fmt.Errorf("%q:\n  %w", getCaller(1), err)
+  }
+  return nil
+}
+
+func getCaller(skip int) string {
+  funcName := "UNKNOWN"
+  pc, f, l, ok := runtime.Caller(skip + 1)
+  if ok {
+    funcName = runtime.FuncForPC(pc).Name()
+  }
+  _, _, _, _ = pc, f, l, funcName
+  return fmt.Sprintf("%s(%s:%d)", funcName, f, l)
+}
+==================================================
+Zap logger
+(tags: zap logger)
+---
+
+// https://sunitc.dev/2019/05/27/adding-uber-go-zap-logger-to-golang-project/
+
+package main
+
+import (
+  "fmt"
+  "github.com/natefinch/lumberjack"
+  "go.uber.org/zap"
+  "go.uber.org/zap/zapcore"
+  "os"
+)
+
+var testErr = fmt.Errorf("test")
+
+func zaploggerTest()  {
+  loggerEx := zap.NewExample()
+  loggerEx.Debug(testErr.Error())
+  // {"level":"debug","msg":"test"}
+
+  loggerDev, err := zap.NewDevelopment()
+  if err != nil {
+    panic(err)
+  }
+  loggerDev.Debug(testErr.Error())
+  // 2021-04-15T17:40:40.126+0300  DEBUG  experiment/zaplogger.go:18  test
+
+  loggerProd, err := zap.NewProduction()
+  if err != nil {
+    panic(err)
+  }
+  loggerProd.Debug(testErr.Error())
+  // nothing
+  loggerProd.Info(testErr.Error())
+  // {"level":"info","ts":1618497640.1463063,"caller":"experiment/zaplogger.go:26","msg":"test"}
+  loggerProd.Info(testErr.Error(), zap.String("status", "ok"))
+  // {"level":"info","ts":1618497640.1463063,"caller":"experiment/zaplogger.go:28","msg":"test","status":"ok"}
+  loggerProd.Error(testErr.Error(), zap.String("status", "ok"), zap.Error(testErr))
+  // {"level":"error","ts":1618497640.1463063,"caller":"experiment/zaplogger.go:30","msg":"test","status":"ok","error":"test","stacktrace":"main.zaploggerTest\n\t_/D_/projects/go/experiment/zaplogger.go:30\nmain.main\n\t_/D_/projects/go/experiment/main.go:6\nruntime.main\n\truntime/proc.go:204"}
+
+  loggerProdWithSugar := loggerProd.Sugar()
+  defer loggerProdWithSugar.Sync()
+  loggerProdWithSugar.Info(testErr.Error(), zap.String("status", "ok"))
+  // {"level":"info","ts":1618497984.2510028,"caller":"experiment/zaplogger.go:38","msg":"test{status 15 0 ok <nil>}"}
+  loggerProdWithSugar.Error(testErr.Error(), zap.String("status", "ok"), zap.Error(testErr))
+  // {"level":"error","ts":1618497984.2510028,"caller":"experiment/zaplogger.go:40","msg":"test{status 15 0 ok <nil>} {error 26 0  test}","stacktrace":"main.zaploggerTest\n\t_/D_/projects/go/experiment/zaplogger.go:40\nmain.main\n\t_/D_/projects/go/experiment/main.go:6\nruntime.main\n\truntime/proc.go:204"}
+
+  loggerProdWithSugar.Infof("info: %v", testErr)
+  // {"level":"info","ts":1618499815.713104,"caller":"experiment/zaplogger.go:44","msg":"info: test"}
+  loggerProdWithSugar.Infow("info", "key", "value")
+  // {"level":"info","ts":1618499815.713104,"caller":"experiment/zaplogger.go:45","msg":"info","key":"value"}
+
+  cfg := zap.NewProductionEncoderConfig()
+  encJson := zapcore.NewJSONEncoder(cfg)
+  file, _ := os.Create("D:\\projects\\go\\experiment\\test.log")
+  ws := zapcore.AddSync(file)
+  enab := zapcore.DebugLevel
+  core := zapcore.NewCore(encJson, ws, enab)
+  loggerWithCore := zap.New(core)
+  loggerWithCore.Info("text", zap.Error(testErr))
+  // in file: {"level":"info","ts":1618500829.6932197,"msg":"text","error":"test"}
+  loggerWithCoreAndSugar := loggerWithCore.Sugar()
+  loggerWithCoreAndSugar.Infof("text: %v", testErr)
+  // in file: {"level":"info","ts":1618500829.6932197,"msg":"text: test"}
+
+  encConsole := zapcore.NewConsoleEncoder(cfg)
+  coreConsole := zapcore.NewCore(encConsole, ws, enab)
+  loggerWithCoreConsole := zap.New(coreConsole)
+  loggerWithCoreConsole.Info("text", zap.Error(testErr))
+  // in file: 1.6185008296932197e+09  info  text  {"error": "test"}
+  loggerWithCoreConsoleAndSugar := loggerWithCoreConsole.Sugar()
+  loggerWithCoreConsoleAndSugar.Infof("text: %v", testErr)
+  // in file: 1.6185008296932197e+09  info  text: test
+
+  cfgTime := zap.NewProductionEncoderConfig()
+  cfgTime.EncodeTime = zapcore.ISO8601TimeEncoder
+  cfgTime.EncodeLevel = zapcore.CapitalLevelEncoder
+  encConsoleTime := zapcore.NewConsoleEncoder(cfgTime)
+  coreConsoleTime := zapcore.NewCore(encConsoleTime, ws, enab)
+  loggerWithCoreConsoleTime := zap.New(coreConsoleTime)
+  loggerWithCoreConsoleTime.Info("text", zap.Error(testErr))
+  // in file: 2021-04-15T18:39:35.129+0300  INFO  text  {"error": "test"}
+  loggerWithCoreConsoleTimeAndSugar := loggerWithCoreConsoleTime.Sugar()
+  loggerWithCoreConsoleTimeAndSugar.Infof("text: %v", testErr)
+  // in file: 2021-04-15T18:40:13.211+0300  INFO  text: test
+
+  loggerWithCoreConsoleTimeAndCaller := zap.New(coreConsoleTime, zap.AddCaller())
+  loggerWithCoreConsoleTimeAndCaller.Info("text", zap.Error(testErr))
+  // in file: 2021-04-15T18:41:57.581+0300  INFO  experiment/zaplogger.go:86  text  {"error": "test"}
+
+  rotateLogger := &lumberjack.Logger{
+    Filename: "D:\\projects\\go\\experiment\\test.log",
+    MaxSize: 10,  // maximum size in megabytes of the log file before it gets rotated
+    MaxBackups: 5, // maximum number of old log files to retain
+    MaxAge: 30, // maximum number of days to retain old log files
+    Compress: false, // rotated log files should be compressed using gzip
+  }
+  wsRotate := zapcore.AddSync(rotateLogger)
+  coreConsoleTimeRotate := zapcore.NewCore(encConsoleTime, wsRotate, enab)
+  loggerWithCoreConsoleTimeAndCallerRotate := zap.New(coreConsoleTimeRotate, zap.AddCaller())
+  loggerWithCoreConsoleTimeAndCallerRotate.Info("text", zap.Error(testErr))
+  // in file: 2021-04-15T18:53:57.853+0300  INFO  experiment/zaplogger.go:100  text  {"error": "test"}
+
+  cfgCustom := zap.Config{
+    Encoding: "json",
+    Level: zap.NewAtomicLevelAt(zap.DebugLevel),
+    OutputPaths: []string{"stdout"},
+    EncoderConfig: zapcore.EncoderConfig{
+      MessageKey: "message",
+      LevelKey:    "level",
+      EncodeLevel: zapcore.CapitalLevelEncoder,
+      TimeKey:    "time",
+      EncodeTime: zapcore.ISO8601TimeEncoder,
+      CallerKey:    "caller",
+      EncodeCaller: zapcore.FullCallerEncoder,
+    },
+  }
+  loggerCfgCustom, _ := cfgCustom.Build()
+  loggerCfgCustom.Info("custom")
+  // {"level":"INFO","time":"2021-04-15T21:29:12.729+0300","caller":"_/D_/projects/go/experiment/zaplogger.go:118","message":"custom"}
+
+  wsFileAndConsole := zapcore.NewMultiWriteSyncer(zapcore.AddSync(os.Stdout), wsRotate)
+  coreFileAndConsole := zapcore.NewCore(encConsoleTime, wsFileAndConsole, enab)
+  loggerWithCoreFileAndConsole := zap.New(coreFileAndConsole, zap.AddCaller())
+  loggerWithCoreFileAndConsole.Info("file and console")
+  // in file: 2021-04-15T21:29:12.729+0300  INFO  experiment/zaplogger.go:123  file and console
+  // 2021-04-15T21:29:12.729+0300  INFO  experiment/zaplogger.go:123  file and console
+
+  zap.ReplaceGlobals(loggerWithCoreFileAndConsole) // теперь можно вызывать из любого места zap.L()
+  fZap()
+}
+
+func fZap() {
+  zap.L().Error("global", zap.Error(testErr))
+  // in file: 2021-04-15T21:29:12.729+0300  ERROR  experiment/zaplogger.go:130  global  {"error": "test"}
+  // 2021-04-15T21:29:12.729+0300  ERROR  experiment/zaplogger.go:130  global  {"error": "test"}
+}
+==================================================
+Linux uniq
+(tags: linux uniq)
+---
+
+cat file.txt | uniq -d
+-u (--unique) — выводит исключительно те строки, у которых нет повторов
+-d (--repeated) — если какая-либо строка повторяется несколько раз, она будет выведена лишь единожды.
+-D — выводит только повторяющиеся строки.
+==================================================
+Update golang version on linux
+(tags: update golang version linux)
+---
+
+cd /home/dim
+wget https://golang.org/dl/go1.16.3.linux-amd64.tar.gz
+rm -rf /usr/local/go
+tar -C /usr/local -xzf /home/dim/go1.16.3.linux-amd64.tar.gz
+echo $PATH | grep "/usr/local/go/bin"
+// если нет, то
+// export PATH=$PATH:/usr/local/go/bin
+// source .bashrc
+В GoLand: File -> Invalidate Caches
+==================================================
+Golang embed template
+(tags: golang embed template)
+---
+
+https://github.com/philippta/web-frontend-demo
+
+// main.go
+package main
+
+import (
+  "net/http"
+  "stepik/html"
+)
+
+func main() {
+  http.HandleFunc("/dashboard", dashboard)
+  http.HandleFunc("/profile/show", profileShow)
+  http.ListenAndServe(":8080", nil)
+}
+func dashboard(w http.ResponseWriter, r *http.Request) {
+  p := html.DashboardParams{
+    Title:   "Dashboard",
+    Message: "Hello from dashboard",
+  }
+  html.Dashboard(w, p)
+}
+func profileShow(w http.ResponseWriter, r *http.Request) {
+  p := html.ProfileShowParams{
+    Title:   "Profile Show",
+    Message: "Hello from profile show",
+  }
+  html.ProfileShow(w, p)
+}
+
+// html/html.go
+package html
+
+import (
+  "embed"
+  "io"
+  "text/template"
+)
+
+//go:embed *
+var files embed.FS
+var (
+  dashboard   = parse("dashboard.html")
+  profileShow = parse("profile/show.html")
+)
+type DashboardParams struct {
+  Title   string
+  Message string
+}
+func Dashboard(w io.Writer, p DashboardParams) error {
+  return dashboard.Execute(w, p)
+}
+type ProfileShowParams struct {
+  Title   string
+  Message string
+}
+func ProfileShow(w io.Writer, p ProfileShowParams) error {
+  return profileShow.Execute(w, p)
+}
+func parse(file string) *template.Template {
+  return template.Must(
+    template.New("layout.html").ParseFS(files, "layout.html", file))
+}
+
+// html/layout.html
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>{{.Title}}</title>
+  </head>
+  <body>
+    {{block "content" .}}{{end}}
+  </body>
+</html>
+
+// html.dashboard.html
+{{define "content"}}
+<p>
+  Dashboard:
+  {{.Message}}
+</p>
+{{end}}
+
+//html/profile/show.html
+{{define "content"}}
+<p>
+  Profile Show:
+  {{.Message}}
+</p>
+{{end}}
+==================================================
+Sqlite date
+(tags: sqlite date)
+---
+
+https://codernotes.ru/articles/bazy-dannyh-t-sql/funkcii-daty-i-vremeni-v-sqlite.html
+
+-- Определить текущую дату.
+SELECT date('now');
+-- Вычислить последний день текущего месяца.
+SELECT date('now','start of month','+1 month','-1 day');
+-- Вычислить дату и время имея на входе метку времени unix 1092941466.
+SELECT datetime(1092941466, 'unixepoch');
+-- Вычислить дату и время имея на входе метку времени unix 1092941466, и перевести его в локальное время.
+SELECT datetime(1092941466, 'unixepoch', 'localtime');
+-- Получить текущую unix метку времени.
+SELECT strftime('%s','now');
+-- Вычислить количество дней с момента подписания Декларации Независимости США.
+SELECT julianday('now') - julianday('1776-07-04');
+-- Вычислить количество секунд с определенного момента в 2004 году:
+SELECT strftime('%s','now') - strftime('%s','2004-01-01 02:34:56');
+-- Вычислить дату первого вторника октября текущего года.
+SELECT date('now','start of year','+9 months','weekday 2');
+-- Вычислить время с эпохи unix в секундах (аналогично strftime('%s','now') не считая дробной части):
+SELECT (julianday('now') - 2440587.5)*86400.0;
+
+date(timestring, modifier, modifier, ...)
+time(timestring, modifier, modifier, ...)
+datetime(timestring, modifier, modifier, ...)
+julianday(timestring, modifier, modifier, ...)
+strftime(format, timestring, modifier, modifier, ...)
+-- format:
+%d  День месяца: 00
+%f  Доли секунды: SS.SSS
+%H  час: 00-24
+%j  день года: 001-366
+%J  Юлианский день
+%m  месяц: 01-12
+%M  минуты: 00-59
+%s  количество секунд с 1970-01-01 (unix timestamp)
+%S  секунды: 00-59
+%w  день недели 0-6 где Воскресенье==0
+%W  неделя года: 00-53
+%Y  год: 0000-9999
+%%  %
+
+date(...) = strftime('%Y-%m-%d', ...)
+time(...) = strftime('%H:%M:%S', ...)
+datetime(...) = strftime('%Y-%m-%d %H:%M:%S', ...)
+julianday(...) = strftime('%J', ...)
+
+-- in table must be:
+YYYY-MM-DD
+YYYY-MM-DD HH:MM
+YYYY-MM-DD HH:MM:SS
+YYYY-MM-DD HH:MM:SS.SSS
+YYYY-MM-DDTHH:MM
+YYYY-MM-DDTHH:MM:SS
+YYYY-MM-DDTHH:MM:SS.SSS
+HH:MM
+HH:MM:SS
+HH:MM:SS.SSS
+now
+DDDDDDDDDD
+
+-- modifier:
+NNN days
+NNN hours
+NNN minutes
+NNN.NNNN seconds
+NNN months
+NNN years
+start of month
+start of year
+start of day
+weekday N
+unixepoch
+localtime
+utc
+==================================================
+Sqlite foreigen keys
+(tags: sqlite foreigen key)
+---
+
+PRAGMA foreign_keys=on;
+
+CREATE TABLE books(
+  Id INTEGER PRIMARY KEY,
+  title TEXT NOT NULL,
+  count_page INTEGER NOT NULL CHECK (count_page >0),
+  price REAL CHECK (price >0)
+);
+
+CREATE TABLE auth(
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  age INTEGER  CHECK (age >16)
+);
+
+CREATE TABLE auth_book (
+  auth_id INTEGER NOT NULL,
+  books_id INTEGER NOT NULL,
+  FOREIGN KEY (auth_id) REFERENCES auth(id)
+  FOREIGN KEY (books_id) REFERENCES books(id)
+);
+==================================================
+Golang init
+(tags: redis syntax)
+---
+
+main
+import pkg1
+  pkg1
+  import pkg2
+    pkg2
+    const
+    var
+    init()
+  const
+  var
+  init()
+const
+var
+init()
+main()
+==================================================
+DeepEqual vs google cmp
+(tags: deepequal vs cmp compare)
+---
+
+https://dev.to/mariocarrion/go-package-for-equality-github-com-google-go-cmp-f8i
+
+package main
+
+import (
+  "fmt"
+  "github.com/google/go-cmp/cmp"
+  "github.com/google/go-cmp/cmp/cmpopts"
+  "reflect"
+  "strings"
+)
+
+func main() {
+  a := []int{1,2,3}
+  b := []int{1,3,2}
+  fmt.Println(reflect.DeepEqual(a, b)) // false
+  fmt.Println(cmp.Equal(a, b)) // false
+  opt := cmpopts.SortSlices(func(a, b int) bool {
+    return a < b
+  })
+  fmt.Println(cmp.Equal(a, b, opt)) // true
+
+  c := map[int]string{1: "aa", 2: "bb", 3: "cc"}
+  d := map[int]string{1: "aa", 3: "cc", 2: "bb"}
+  fmt.Println(reflect.DeepEqual(c, d)) // true
+  fmt.Println(cmp.Equal(c, d)) // true
+  opt2 := cmpopts.SortMaps(func(c, d int) bool {
+    return c < d
+  })
+  fmt.Println(cmp.Equal(c, d, opt2)) // true
+
+  e := map[int]Message{1: "aa", 2: "bb", 3: "cc"}
+  f := map[int]Message{1: "aa", 3: "cc", 2: "BB"}
+  fmt.Println(reflect.DeepEqual(e, f)) // false
+  fmt.Println(cmp.Equal(e, f)) // true
+
+  g := Alert{Message: "aa", code: 1}
+  h := Alert{Message: "aa", code: 2}
+  fmt.Println(reflect.DeepEqual(g, h)) // false
+  //fmt.Println(cmp.Equal(g, h)) // panic
+  fmt.Println(cmp.Equal(g, h, cmpopts.IgnoreUnexported(Alert{}))) // true
+
+  g1 := &Alert{Message: "aa", code: 1}
+  h1 := &Alert{Message: "aa", code: 2}
+  fmt.Println(reflect.DeepEqual(g1, h1)) // false
+  //fmt.Println(cmp.Equal(g1, h1)) // panic
+  fmt.Println(cmp.Equal(g1, h1, cmpopts.IgnoreUnexported(Alert{}))) // true
+}
+
+type Message string
+
+func (m Message) Equal(b Message) bool {
+  return strings.ToLower(string(m)) == strings.ToLower(string(b))
+}
+
+type Alert struct {
+  Message Message
+  code    int
+}
+==================================================
+Sqlboiler
+(tags: sqlboiler)
+---
+
+https://github.com/volatiletech/sqlboiler
+
+// for go 1.15 (for above use go install)
+GO111MODULE=on go get -u -t github.com/volatiletech/sqlboiler/v4
+GO111MODULE=on go get github.com/volatiletech/sqlboiler/v4/drivers/sqlboiler-psql
+go get github.com/volatiletech/sqlboiler/v4
+go get github.com/volatiletech/null/v8
+// in sqlboiler.toml file:
+output   = "my_models"
+wipe     = true
+no-tests = true
+
+[psql]
+  dbname = "dbname"
+  host   = "localhost"
+  port   = 5432
+  user   = "dbusername"
+  pass   = "dbpassword"
+  schema = "myschema"
+  blacklist = ["migrations", "other"]
+// wipe - remove "my_models" folder
+// in terminal:
+sqlboiler psql
+// check "my_models" folder ("models" on default) in your project
+
+// print query
+ctx = boil.WithDebug(ctx, true)
+==================================================
+Golang pprof
+(tags: golang pprof)
+---
+
+package main
+
+import (
+  "fmt"
+  "io"
+  "net/http"
+  _ "net/http/pprof"
+  "time"
+)
+
+func main() {
+  Handler := func(w http.ResponseWriter, req *http.Request){
+    sleep(5)
+    sleep(10)
+    io.WriteString(w, "for test")
+  }
+  http.HandleFunc("/", Handler)
+  http.ListenAndServe(":1234", nil)
+}
+
+func sleep(sleepTime int) {
+  time.Sleep(time.Duration(sleepTime) * time.Millisecond)
+  fmt.Println("slept for", sleepTime, "ms")
+}
+
+// start Apache Bensh for generate testing requests
+// 5000 numbers on 10 threads
+ab -n 5000 -c 10 http://localhost:1234/
+// get snap of profile
+curl -s "localhost:1234/debug/pprof/profile?seconds=10" > out.dump
+go tool pprof out.dump
+web
+// on error: Running Firefox as root in a regular user's session is not supported
+// exit
+// su - username
+// go tool pprof out.dump
+// on error: no DISPLAY environment variable specified
+// exit
+// export DISPLAY=:0
+// go tool pprof out.dump
+web sleep
+
+//bash script
+#!/usr/bin/env bash
+
+curl http://localhost:1234/debug/pprof/heap -o mem.out
+curl http://localhost:1234/debug/pprof/allocs -o memallocs.out
+curl http://localhost:1234/debug/pprof/goroutine -o goroutine.out
+curl http://localhost:1234/debug/pprof/mutex -o mutex.out
+curl http://localhost:1234/debug/pprof/profile?seconds=5 -o cpu.out
+curl http://localhost:1234/debug/pprof/trace?seconds=10 -o trace.out
+==================================================
+Golang benchmark
+(tags: golang benchmark)
+---
+
+// main.go
+package main
+
+import "time"
+
+func main() {
+
+}
+func sleep1(sleepTime int) {
+  time.Sleep(time.Duration(sleepTime) * time.Millisecond)
+}
+func sleep2(sleepTime int) {
+  <-time.After(time.Duration(sleepTime) * time.Millisecond)
+}
+
+// main_test.go
+package main
+
+import "testing"
+
+func Benchmark_sleep1(b *testing.B) {
+  for i := 0; i < b.N; i++ {
+    sleep1(10)
+  }
+}
+func Benchmark_sleep2(b *testing.B) {
+  for i := 0; i < b.N; i++ {
+    sleep2(10)
+  }
+}
+
+go test -bench=. -benchmem -cpuprofile=cpu.out -memprofile=mem.out
+//Benchmark_sleep1-4  100  11703997 ns/op  166 B/op  0 allocs/op
+//Benchmark_sleep2-4  100  11401463 ns/op  200 B/op  3 allocs/op
+go tool pprof cpu.out
+web
+// see pprof tag
+
+go test -bench=Benchmark_sleep1 -benchmem -cpuprofile=sleep1_cpu.out -memprofile=sleep1_mem.out
+go test -bench=Benchmark_sleep2 -benchmem -cpuprofile=sleep2_cpu.out -memprofile=sleep2_mem.out
+go tool pprof -base sleep1_cpu.out sleep2_cpu.out
+top10 -cum
+// if "cum -20ms" then sleep2 better than sleep1
+go tool pprof -base sleep1_mem.out sleep2_mem.out
+top10 -cum
+// if "cum 1696.33kB" then sleep2 worse than sleep1
+==================================================
+Golang project structure
+(tags: golang project structure)
+---
+
+myapp
+  cmd // для сборки различных приложений с той же кодовой базой
+  firstapp
+    main.go
+  secondapp
+    main.go
+  internal // бизнеслогика данного проекта, не экспортируется в другие проекты
+  pkg // методы с открытым апи, можно экспортировать в другие проекты
+  deployments // docker-compose для инфраструктуры
+  scripts // различные скрипты
+  tools // инструменты или мини-программы использующие данную кодовую базу
+  infrastructure // все что касается взаимодействия с инфраструктурой
+  init // содержит начальные конфигурации
+  transport // все что касается транспорта grps, http и др
+  domain // здесь описаны доменные сущности
+  config // структура конфигурации приложения
+  endpoint // содержит endpoint, response, request, middleware для go-kit
+  plugins // скомпилированные .so плагины (код их в internal)
+==================================================
+Linux alias
+(tags: linux alias)
+---
+
+alias # список алиасов
+alias c='clear' # очистить вывод терминала
+unalias c # удалить алиас
+# можно добавить в ~/.bashrc чтоб каждый раз не создавать
+
+alias ll='ls -la'
+alias cd..='cd ..'
+alias ..='cd ..'
+alias ...='cd ../../../'
+alias ....='cd ../../../../'
+alias .....='cd ../../../../'
+alias mkdir='mkdir -pv' # Создавать дерево каталогов, если оно не существует
+alias diff='colordiff' # Делаем вывод diff цветным
+alias h='history'
+alias j='jobs -l'
+alias path='echo -e ${PATH//:/\\n}'
+alias now='date +"%T"'
+alias nowtime=now
+alias nowdate='date +"%d-%m-%Y"'
+alias ping='ping -c 5'
+alias ports='netstat -tulanp' # Открытые порты
+alias iptlist='sudo /sbin/iptables -L -n -v --line-numbers'
+alias iptlistin='sudo /sbin/iptables -L INPUT -n -v --line-numbers'
+alias iptlistout='sudo /sbin/iptables -L OUTPUT -n -v --line-numbers'
+alias iptlistfw='sudo /sbin/iptables -L FORWARD -n -v --line-numbers'
+alias firewall=iptlist
+alias meminfo='free -m -l -t' # Использование памяти
+alias psmem='ps auxf | sort -nr -k 4' # Показать процессы потребляющие больше всего памяти
+alias psmem10='ps auxf | sort -nr -k 4 | head -10'
+alias pscpu='ps auxf | sort -nr -k 3' # Показать процессы использующие процессор
+alias pscpu10='ps auxf | sort -nr -k 3 | head -10'
+alias cpuinfo='lscpu' # Информация о процессоре
+alias gpumeminfo='grep -i --color memory /var/log/Xorg.0.log' # Посмотреть память видеокарты
+==================================================
+Blockchain
+(tags: blockchain)
+---
+
+https://github.com/tensor-programming/golang-blockchain
+
+package main
+
+import (
+  "bytes"
+  "crypto/sha256"
+  "fmt"
+)
+
+type BlockChain struct {
+  blocks []*Block
+}
+type Block struct {
+  Hash     []byte
+  Data     []byte
+  PrevHash []byte
+}
+func (b *Block) DeriveHash() {
+  info := bytes.Join([][]byte{b.Data, b.PrevHash}, []byte{})
+  hash := sha256.Sum256(info)
+  b.Hash = hash[:]
+}
+func CreateBlock(data string, prevHash []byte) *Block {
+  block := &Block{[]byte{}, []byte(data), prevHash}
+  block.DeriveHash()
+  return block
+}
+func (chain *BlockChain) AddBlock(data string) {
+  prevBlock := chain.blocks[len(chain.blocks)-1]
+  new := CreateBlock(data, prevBlock.Hash)
+  chain.blocks = append(chain.blocks, new)
+}
+func Genesis() *Block {
+  return CreateBlock("Genesis", []byte{})
+}
+func InitBlockChain() *BlockChain {
+  return &BlockChain{[]*Block{Genesis()}}
+}
+
+func main() {
+  chain := InitBlockChain()
+
+  chain.AddBlock("First Block after Genesis")
+  chain.AddBlock("Second Block after Genesis")
+  chain.AddBlock("Third Block after Genesis")
+
+  for _, block := range chain.blocks {
+    fmt.Printf("Previous Hash: %x\n", block.PrevHash)
+    fmt.Printf("Data in Block: %s\n", block.Data)
+    fmt.Printf("Hash: %x\n", block.Hash)
+  }
+}
+==================================================
+Turn off gc
+(tags: off cg golang)
+---
+
+func f() {
+  defer debug.SetGCPercent(debug.SetGCPercent(-1))
+  // do something
+}
+==================================================
+Call rust from golang
+(tags: call rust golang)
+---
+
+https://github.com/mediremi/rust-plus-golang
+
+// curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+// export PATH=$PATH:/root/.cargo/bin
+// cd ~
+// source .bashrc
+
+// main.go
+package main
+
+/*
+#cgo LDFLAGS: -L./lib -lhello
+#include "./lib/hello.h"
+*/
+import "C"
+
+func main() {
+  C.hello(C.CString("John Smith"))
+}
+
+// lib/hello.h
+void hello(char *name);
+
+// lib/hello/Cargo.toml
+[package]
+name = "hello"
+version = "0.1.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+libc = "0.2.2"
+
+// lib/hello/src/lib.rs
+extern crate libc;
+use std::ffi::CStr;
+
+#[no_mangle]
+pub extern "C" fn hello(name: *const libc::c_char) {
+    let buf_name = unsafe { CStr::from_ptr(name).to_bytes() };
+    let str_name = String::from_utf8(buf_name.to_vec()).unwrap();
+    println!("Hello {}!", str_name);
+}
+
+// Makefile
+ROOT_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
+
+build:
+  cd lib/hello && cargo build --release
+  cp lib/hello/target/release/libhello.so lib/
+  go build -ldflags="-r $(ROOT_DIR)lib" main.go
+
+run: build
+  ./main
+
+// make
+// ./main
+==================================================
+Rust syntax
+(tags: rust syntax)
+---
+
+https://metanit.com/rust/tutorial
+
+use std::collections::HashMap;
+use my_module::inner_module::test;
+
+const TEXT: &str = "constanta";
+// let b: &str = "not compiled";
+
+fn main() {
+  // let if
+  let condition = true;
+  let number = if condition { 4 } else { 5 };
+  println!("number = {}", number);  // number = 4
+
+  // match
+  let num = 3;
+  let result = match num {
+    1 => "один",
+    2 => "два",
+    3 => "три",
+    _ => "непонятно"
+  };
+  println!("result = {}", result);  // result = три
+
+  // loop
+  let mut n = 1;
+  let result = loop {
+    n = n + 1;
+    if n == 10 {
+      break n;
+    }
+  };
+  println!("result = {}", result);  // result = 10
+  // while
+  let mut n = 1;
+  while n < 10 {
+    n = n + 1;
+  }
+  println!("n = {}", n);  // n = 10
+  // for
+  for num in 1..6 {
+    println!("num = {}", num);
+  }
+
+  // function
+  hello(); // Hello Rust
+  println!("sum = {}", sum(2, 3)); // sum = 5
+
+  // constant
+  const PI: f32 = 3.14; // can not be changed
+  println!("PI = {}", PI);
+
+  // anonymous function
+  let sum = |a: i32, b: i32| -> i32{
+    a + b
+  };
+  let sum_of_5_and_4 = sum(5, 4);
+  println!("Сумма 5 и 4 равна: {}", sum_of_5_and_4); //Сумма 5 и 4 равна: 9
+  let sum = |a, b| a + b; //without types
+  let sum_of_int = sum(5, 4);
+  // let sum_of_float = sum(5.3, 4.2); //error: expected integer, found floating-point number
+
+  // closure
+  let message = "Hello Rust!";
+  let hello = || {
+    println!("{}", message); // using environment variable
+  };
+  hello(); // Hello Rust!
+
+  // tuple
+  let user = ("Tom", 36, 1.78);
+  let user: (&str, u8, f32) = ("Tom", 36, 1.78);
+  println!("Имя: {}", user.0); // Имя: Tom
+  // mutable tuple
+  let mut user = ("Tom", 32, 1.65);
+  user.0 = "Bob";
+  println!("Имя: {}", user.0); // Имя: Bob
+  // decomposition of tuple
+  let (name, _, height) = user;
+  println!("Имя: {}", name); // Имя: Bob
+
+  // array
+  let numbers: [i32; 7] = [1, 2, 3, 5, 8, 13, 21];
+  let numbers = [1, 2, 3, 5, 8, 13, 21];
+  println!("{}", numbers[0]);   // 1
+  // mutable array
+  let mut users = ["Tom", "Bob", "Sam"];
+  users[0] = "Alice";
+  println!("{}", users[0]);   // Alice
+  // iterate array
+  for user in users.iter() {
+    print!("{} ", user);
+  }
+  // array with default
+  let numbers: [i32; 5] = [2; 5]; // 2 2 2 2 2
+
+  // struct
+  let tom = Person {
+    name: "Tom".to_string(),
+    age: 36,
+    height: 1.78,
+  };
+  println!("name = {}", tom.name); // name = Tom
+  let bob = Person {
+    name: "Bob".to_string(),
+    ..tom
+  };
+  println!("name = {}", bob.name); // name = Bob
+  // decomposition of struct
+  let Person { name: username, age: userage, height: _ } = tom;
+  println!("name = {}  age = {}", username, userage); // name = Tom  age = 36
+
+  // tuple structs
+  let start = Point(2, 4);
+  println!("Начало: (x={}, y={})", start.0, start.1); // Начало: (x=2, y=4)
+  let end = Point(2, 7);
+  let dist = Distance(start, end);
+  println!("Начало: ({},{})", dist.0.0, dist.0.1); // Начало: (2,4)
+
+  // enums
+  let op = OperationType::Subtract;
+  match op {
+    OperationType::Add => println!("Сложение"),
+    OperationType::Subtract => println!("Вычитание"),
+  }
+
+  // enums with types
+  let dt = DayTime::Morning("Доброе утро".to_string());
+  match dt {
+    DayTime::Morning(_) => println!("Добрый день!"),
+    DayTime::Evening(message) => println!("{}", message),
+  }
+
+  // range
+  let numbers = 1..9;
+  for num in numbers {
+    print!("{} ", num); // 1 2 3 4 5 6 7 8
+  }
+  let numbers = std::ops::Range { start: 1, end: 9 };
+  for num in numbers {
+    print!("{} ", num);     // 1 2 3 4 5 6 7 8
+  }
+  let numbers = 1..=9;    // include 9
+  for num in numbers {
+    print!("{} ", num);     // 1 2 3 4 5 6 7 8 9
+  }
+  let numbers = [1, 2, 3, 4, 5, 6, 7, 8];
+  for num in numbers[1..5].iter() {
+    print!("{} ", num)              // 2 3 4 5
+  }
+
+  // if let
+  let user = ("Tom", 21);
+  if let ("Tom", age) = user {
+    println!("age: {}", age); // 21
+  }
+  let morning = DayTime::Morning("Доброе утро".to_string());
+  if let DayTime::Morning(message) = morning {
+    println!("morning message: {}", message); // morning message: Доброе утро
+  }
+  let tom = Person {
+    name: "Tom".to_string(),
+    age: 33,
+    height: 1.70,
+  };
+  let username = "Tom".to_string();
+  if let Person { name: username, age: 33, height: _ } = tom {
+    println!("Это Том");
+  }
+
+  // ownership
+  let s1 = "hello".to_string();  // s1 - владелец строки "hello"
+  println!("s1: {}", s1);
+  let s2 = s1;  // меняем владельца строки на s2
+  // println!("s1: {}", s1);  // !Ошибка - s1 теперь нельзя использовать
+
+  let s1 = "hello".to_string();  // s1 - владелец строки "hello"
+  println!("s1: {}", s1);
+  display_message(s1);
+  // println!("s1: {}", s1);  // !Ошибка - переменная s1 неинициализирована
+
+  // reference
+  let s1 = "hello".to_string();  // s1 - владелец строки "hello"
+  let s2 = &s1;  // s2 получает ссылку на значение переменной s1
+  println!("s1: {}", s1);  // s1: hello
+  display_message_ref(&s1);
+
+  // mutable reference
+  let mut message = "hello".to_string();
+  change_message(&mut message);
+  let mut s1 = "hello".to_string();
+  // let s2 = &mut s1;
+  // let s3 = &mut s1; // error: second mutable borrow occurs here (только одна мутабельная ссылка может быть)
+  {
+    let s3 = &mut s1;
+  }
+  let s2 = &mut s1;
+  s2.push('!');
+  println!("{}", s1); // hello!
+
+  let mut s1 = "hello".to_string();
+  // let s2 = &mut s1;    // если определить здесь, будет ошибка
+  {
+    let s3 = &mut s1;
+    s3.push('?');
+  }
+  let s2 = &mut s1;
+  s2.push('!');
+  println!("{}", s1); // hello?!
+
+  // slice
+  let numbers = [1, 2, 3, 4, 5, 6, 7, 8];
+  let slice = &numbers[1..5];  // получим слайс
+  println!("slice[0]={}", slice[0]);  // выведем первый элемент слайса
+  for num in slice {
+    print!("{} ", num)  // 2 3 4 5
+  }
+  // numbers[..] эквивалентно [1, 2, 3, 4, 5, 6, 7, 8]
+  // numbers[..3] эквивалентно [1, 2, 3 ]
+  // numbers[..=3] эквивалентно [1, 2, 3, 4]
+  // numbers[1..] эквивалентно [2, 3, 4, 5, 6, 7, 8]
+  // numbers[1..3] эквивалентно [2, 3]
+  // numbers[1..=3] эквивалентно [2, 3, 4]
+  let mut numbers = [1, 2, 3, 4, 5, 6, 7, 8];
+  let slice = &mut numbers[1..5]; // получим слайс
+  slice[0] = 81; // изменим первый элемент слайса
+  println!("slice[0]={}", slice[0]); // slice[0]=81
+
+  // method
+  let tom = Person {
+    name: "Tom".to_string(),
+    age: 36,
+    height: 156.0,
+  };
+  tom.display(); // Name: Tom  Age: 36
+  tom.is_older(&bob);
+  let mut tom = Person { name: "Tom".to_string(), age: 36, height: 156.0 };
+  tom.change_age(42);
+  tom.display(); // Name: Tom  Age: 42
+
+  // associated function
+  let tom = Person::create("Tom", 36);
+  tom.display(); // Name: Tom  Age: 36
+
+  // trait
+  tom.print(); // Person Tom; age: 36
+  println!("{}", tom.preview()); // [Предпросмотр] Person Tom; age: 36
+  tom.print_something(); // something...
+  display_printable(&tom); // Person Tom; age: 36
+  let printable = create_printable();
+  display_printable(&printable); // Person Bob; age: 23
+
+  // generics
+  let bob = PersonGen { id: String::from("fhe34u847"), name: "Bob".to_string(), place: 3 };
+  println!("id: {}  name: {}", bob.id, bob.name); // id: fhe34u847  name: Bob
+  let morning = DayTimeGen::Morning("Доброе утро".to_string());
+  let evening = DayTimeGen::Evening(16);
+  let result1 = receive(3);
+  println!("{}", result1);  // 3
+  let result2 = receive("hello");
+  println!("{}", result2);  // hello
+  println!("{}", bob.get_id());  // fhe34u847
+  let rob = PersonGen { id: 2, name: "Rob".to_string(), place: 4 };
+  println!("{}", rob.get_id_i32()); //2
+  let tom = Person { name: "Tom".to_string(), age: 36, height: 156.0 };
+  display_printable_gen(&tom); // Person Tom; age: 36
+  display_printable_gen_where(&tom); // Person Tom; age: 36
+  print_send(&tom); //Person Tom; age: 36 Сообщение отправлено
+
+  // lifetime
+  let message = get_message();
+  println!("message: {}", message); // hello
+  println!("message: {}", get_message_static()); // hello
+
+  // vector
+  let v: Vec<i32> = Vec::new(); // empty
+  let v = vec![1, 2, 3];
+  let v: Vec<i32> = vec![]; // empty
+  let v = vec![5; 3]; // vec![5, 5, 5];
+  let mut users = Vec::new();
+  users.push("Tom");
+  println!("1. {}", users[0]);    // 1. Tom
+  users[0] = "Alice";
+  println!("1. {}", users[0]);    // 1. Alice
+  users.push("Bob");
+  for user in &users { // если просто users, то это передаст владение вектором циклу for и users нельзя будет больше использовать
+    println!("{}", user);
+  }
+  println!("length: {}", users.len());    // length: 2
+  let removed_element = users.pop();   // удаляем элемент из конца, возвращается Option<T>
+  println!("Удаленный элемент: {}", removed_element.unwrap());    // Удаленный элемент: Bob
+
+  // string
+  let message = String::new(); // empty
+  let message = String::from("Hello");
+  let message = "hello".to_string();
+  println!("length: {}", message.chars().count()); // 5
+  let mut message = String::from("hello");
+  message.push('?');
+  println!("Message: {}", message); // Message: hello?
+  message.push_str(" Rust");
+  println!("Message: {}", message); // Message: hello? Rust
+  let hello = String::from("hello ");
+  let rust = String::from("Rust");
+  let message = hello + &rust;
+  println!("Message: {}", message); // Message: hello Rust
+  // println!("{}", hello);   // !Ошибка владение данными перешло от переменной hello к message
+  let hello = String::from("hello ");
+  let rust = String::from("Rust");
+  let message = format!("{} {} on Metanit.com", hello, rust);
+  println!("{}", message);    // hello Rust on Metanit.com
+
+  // hashmap
+  let mut countries: HashMap<String, i32> = HashMap::new();
+  countries.insert(String::from("Германия"), 82);
+  countries.insert(String::from("Франция"), 67);
+  println!("Число элементов: {}", countries.len()); // Число элементов: 2
+  let mut countries = HashMap::new();
+  let population = 82;
+  let country = String::from("Германия");
+  countries.insert(country, population);
+  println!("population: {} млн. чел.", population); // population можно использовать
+  // println!("country: {}", country); // ! Ошибка country нельзя использовать
+  // countries.insert(&country, population); // так мы не передадим владение
+  let population = countries["Германия"];
+  println!("Germany : {}", population); // Germany : 82
+  // let population = countries["France"]; // error: no entry found for key
+  let population = countries.get("France");
+  if population == Option::None {
+    println!("Элемента с ключом France не существует");
+  } else {
+    println!("France : {}", population.unwrap());
+  }
+  for (key, value) in &countries {
+    println!("{}: {}", key, value);
+  }
+  if countries.contains_key("France") {
+    println!("{}", countries["France"]);
+  }
+  let mut countries = HashMap::new();
+  countries.insert(String::from("Germany"), 82);
+  countries.entry(String::from("France")).or_insert(67);
+  countries.entry(String::from("Germany")).or_insert(250);
+  println!("{}", countries["Germany"]);       // 82
+  println!("{}", countries["France"]);        // 67
+  countries.remove("Germany");
+  countries.clear();  // очищаем объект HashMap
+
+  // module
+  my_module::pub_test(); // Hello from my_module
+  // my_module::private_test(); // error: function is private
+  let mut person = my_module::Person{ name: "Tom".to_string(), age: 22 };
+  println!("{}", person.name); // Tom
+  my_module::inner_module::test(); // Hello from inner_module
+  my_module::child_module::test(); // Hello from my_module
+  // use my_module::inner_module::hello;
+  test(); // Hello from inner_module
+  // use my_module::inner_module::*;
+  // use my_module::inner_module::{hello, bye}; // hello(); buy();
+  // use my_module::inner_module::{self, hello, bye}; // inner_module::welcome();
+  // use my_module::inner_module; // inner_module::hello();
+  // use my_module::inner_module::hello as simple_hello; // simple_hello();
+  // external file lifetime.rs:
+  // pub mod messages{
+  //   pub mod message_functions{
+  //     pub fn hello(){ println! ("Hello"); }
+  //     pub fn bye(){ println! ("Good bye"); }
+  //   }
+  // }
+  // and in main.rs we include them:
+  // mod lifetime;
+  // use lifetime::messages::message_functions::{hello, bye};
+
+  // error
+  // panic!("непредвиденная ошибка"); // выводит на консоль сообщение об ошибке, очищает стек и завершает выполнение программы
+  // enum Result<T, E> {
+  //   Ok(T),
+  //   Err(E),
+  // }
+  let tom_result = create_person("Tom", 36);
+  match tom_result{
+    Ok(tom) => println!("Name: {}  Age: {}", tom.name, tom.age), // Name: Tom  Age: 36
+    Err(err_message) => println!("{}", err_message)
+    // Err(err_message) => panic!("Возникла проблема: {}", err_message)
+  }
+  let tom_result = create_person("Tom", 36);
+  let tom = match tom_result{
+    Ok(person) => person,
+    Err(err_message) => panic!("Возникла проблема: {}", err_message)
+  };
+  println!("Name: {}  Age: {}", tom.name, tom.age); // Name: Tom  Age: 36
+  // Если возвращенный объект Result представляет константу Ok, то метод unwrap() возвращает объект,
+  // который содержится в константе Ok. Но если объект Result представляет константу Err, то метод unwrap() вызывает макрос panic!.
+  let tom = create_person("Tom", 36).unwrap();
+  println!("Name: {}  Age: {}", tom.name, tom.age);
+  let tom = create_person("Tom", 36).expect("Что-то пошло не так...."); // like unwrap with message
+  println!("Name: {}  Age: {}", tom.name, tom.age);
+  let tom = create_person("Tom", 36).unwrap_or_else(|error| { // обработка ошибки в анонимной функции
+    panic!("Возникла проблема: {}", error)
+  });
+  let tom_result = create_person_err("Tom", 36);
+  let tom = match tom_result{
+    Ok(person) => person,
+    Err(error) => match error.kind {
+      ErrorKind::InvalidAge(message) => panic!("{}", message),
+      ErrorKind::InvalidName(message) => panic!("{}", message)
+    }
+  };
+  let tom = create_person_err("Tom", 36).unwrap_or_else(|error| {
+    match error.kind {
+      ErrorKind::InvalidAge(message) => panic!("{}", message),
+      ErrorKind::InvalidName(message) => panic!("{}", message)
+    }
+  });
+  // fn main() ->Result<(), String>{
+  //   let tom = create_person("Tom", 36)?;
+  //   println!("Name: {}  Age: {}", tom.name, tom.age);
+  //   Ok(())
+  // }
+
+  // cargo
+  // cargo new hello
+  // in Cargo.toml file:
+  // [dependencies]
+  // rand = "0.8.3"
+  // in main.rs file:
+  // use rand::Rng;  // используем пакет rand
+  // let random_number = rand::thread_rng().gen_range(0..10);
+  // cargo run
+
+  // stdin
+  // use std::io;
+  // fn main()  -> io::Result<()>{
+  //   let mut input = String::new();
+  //   println!("Введите свое имя: ");
+  //   io::stdin().read_line(&mut input)?;
+  //   println!("Ваш имя: {}", input);
+  //   Ok(())
+  // }
+}
+
+fn hello(){ println!("Hello Rust"); }
+fn sum(a: i32, b: i32) -> i32
+{
+  a + b
+  // return a + b; //ok
+  // a + b; //will return (), no i32
+}
+struct Person {
+  name: String,
+  age: u8,
+  height: f32,
+}
+struct Point(i32, i32);
+struct Distance(Point, Point);
+enum OperationType {
+  Add,
+  Subtract,
+}
+enum DayTime {
+  Morning(String),
+  Evening(String),
+}
+fn display_message(message: String) {println!("message: {}", message);}
+fn display_message_ref(message: &String) {println!("message: {}", message);}
+fn change_message(mes: &mut String) {mes.push('!');}
+impl Person {
+  fn display(&self) {println!("Name: {}  Age: {}", &self.name, &self.age);}
+  fn is_older(&self, other: &Person) -> bool {self.age > other.age}
+  fn change_age(&mut self, age: u8) {self.age = age;}
+  fn create(user_name: &str, user_age: u8) -> Person {
+    Person {
+      name: String::from(user_name),
+      age: user_age,
+      height: 159.7,
+    }
+  }
+}
+trait Printer {
+  fn print(&self);
+  fn preview(&self) -> String;
+  fn print_something(&self) {println!("something...");}
+}
+impl Printer for Person {
+  fn print(&self) {println!("Person {}; age: {}", self.name, self.age);}
+  fn preview(&self) -> String {format!("[Предпросмотр] Person {}; age: {}", self.name, self.age)}
+}
+fn display_printable(printable: &impl Printer) {printable.print();}
+fn create_printable() -> impl Printer {
+  return Person {
+    name: "Bob".to_string(),
+    age: 23,
+    height: 178.0,
+  };
+}
+struct PersonGen<T, S> {
+  id: T,
+  name: String,
+  place: S,
+}
+enum DayTimeGen<T> {
+  Morning(T),
+  Evening(T),
+}
+fn receive<T>(item: T) -> T {item}
+impl<T, S> PersonGen<T, S> {
+  fn get_id(&self) -> &T {
+    &self.id
+  }
+}
+impl PersonGen<i32, i32> {
+  fn get_id_i32(&self) -> &i32 {&self.id}
+}
+fn display_printable_gen<T: Printer>(printable: &T) {printable.print();}
+fn display_printable_gen_where<T>(printable: &T) where T: Printer {printable.print();}
+trait Sender { fn send(&self); }
+impl Sender for Person {
+  fn send(&self) {println!("Сообщение отправлено");}
+}
+fn print_send(obj: &(impl Printer + Sender)) {
+//fn print_send<T: Printer + Sender>(obj: &T) {
+//fn print_send<T>(obj: &T) where T: Printer + Sender{
+// fn process<T: Printer + Editor, S: Printer + Sender>(obj1: &T, obj2: &S){
+  obj.print();
+  obj.send();
+}
+fn get_message<'a>() -> &'a str {"hello"}
+// fn check_name<'a, 'b>(name: &'a str, default: &'b str) -> &'a str {
+//     if name == "admin" { default}
+//     else {name}
+// }
+fn get_message_static() -> &'static str {"hello"}
+mod my_module {
+  // определяем модуль
+  pub fn pub_test() {  // определяем публичную функцию - с атрибутом pub
+    println!("Hello from my_module");
+  }
+  fn private_test() {  // определяем публичную функцию - с атрибутом pub
+    println!("Hello from my_module");
+  }
+  pub struct Person {
+    pub name: String,
+    pub age: u8
+  }
+  pub mod inner_module{
+    pub fn test(){println! ("Hello from inner_module");}
+    pub fn hello(){println! ("Hello");}
+    pub fn bye(){println! ("Good bye");}
+    pub fn welcome(){println! ("Welcome");}
+  }
+  pub mod child_module{
+    pub fn test(){
+      super::pub_test(); // обращаемся к функции из родительского модуля
+    }
+  }
+}
+fn create_person(username: &str, userage: u8) -> Result<Person, String>{
+  if userage < 110{
+    let new_person = Person{name: String::from(username), age: userage, height: 150.0 };
+    Result::Ok(new_person)
+  }
+  else {
+    Result::Err(String::from("Некорректный возраст. Возраст должен быть меньше 110"))
+  }
+}
+enum ErrorKind{
+  InvalidAge(String),
+  InvalidName(String)
+}
+struct PersonError {kind: ErrorKind}
+fn create_person_err(username: &str, userage: u8) -> Result<Person, PersonError>{
+  if username.len() < 3{
+    Result::Err(
+      PersonError{kind: ErrorKind::InvalidName(String::from("Некорректное имя. Длина имени должна быть больше 2-х символов"))}
+    )
+  }
+  else if userage > 110{
+    Result::Err(
+      PersonError{kind: ErrorKind::InvalidAge(String::from("Некорректный возраст. Возраст должен быть меньше 110"))}
+    )
+  }
+  else{
+    let new_person = Person{name: String::from(username), age: userage, height: 143.0 };
+    Result::Ok(new_person)
+  }
+}
+==================================================
+Golang frontend with gomponents
+(tags: frontend gomponents)
+---
+
+https://www.gomponents.com/
+
+package main
+
+import (
+  "net/http"
+  "time"
+
+  g "github.com/maragudk/gomponents"
+  c "github.com/maragudk/gomponents/components"
+  . "github.com/maragudk/gomponents/html"
+)
+
+func main() {
+  http.Handle("/", createHandler(indexPage()))
+  http.Handle("/contact", createHandler(contactPage()))
+  http.Handle("/about", createHandler(aboutPage()))
+
+  _ = http.ListenAndServe("localhost:8080", nil)
+}
+
+func createHandler(title string, body g.Node) http.HandlerFunc {
+  return func(w http.ResponseWriter, r *http.Request) {
+    // Rendering a Node is as simple as calling Render and passing an io.Writer
+    _ = Page(title, r.URL.Path, body).Render(w)
+  }
+}
+
+func indexPage() (string, g.Node) {
+  return "Welcome!", Div(
+    H1(g.Text("Welcome to this example page")),
+    P(g.Text("I hope it will make you happy. 😄 It's using TailwindCSS for styling.")),
+  )
+}
+
+func contactPage() (string, g.Node) {
+  return "Contact", Div(
+    H1(g.Text("Contact us")),
+    P(g.Text("Just do it.")),
+  )
+}
+
+func aboutPage() (string, g.Node) {
+  return "About", Div(
+    H1(g.Text("About this site")),
+    P(g.Text("This is a site showing off gomponents.")),
+  )
+}
+
+func Page(title, path string, body g.Node) g.Node {
+  // HTML5 boilerplate document
+  return c.HTML5(c.HTML5Props{
+    Title:    title,
+    Language: "en",
+    Head: []g.Node{
+      Link(Rel("stylesheet"), Href("https://unpkg.com/tailwindcss@^2.1.x/dist/base.min.css")),
+      Link(Rel("stylesheet"), Href("https://unpkg.com/tailwindcss@^2.1.x/dist/components.min.css")),
+      Link(Rel("stylesheet"), Href("https://unpkg.com/@tailwindcss/typography@0.4.x/dist/typography.min.css")),
+      Link(Rel("stylesheet"), Href("https://unpkg.com/tailwindcss@^2.1.x/dist/utilities.min.css")),
+    },
+    Body: []g.Node{
+      Navbar(path, []PageLink{
+        {Path: "/contact", Name: "Contact"},
+        {Path: "/about", Name: "About"},
+      }),
+      Container(
+        Prose(body),
+        PageFooter(),
+      ),
+    },
+  })
+}
+
+type PageLink struct {
+  Path string
+  Name string
+}
+
+func Navbar(currentPath string, links []PageLink) g.Node {
+  return Nav(Class("bg-gray-700 mb-4"),
+    Container(
+      Div(Class("flex items-center space-x-4 h-16"),
+        NavbarLink("/", "Home", currentPath == "/"),
+
+        // We can Map custom slices to Nodes
+        g.Group(g.Map(len(links), func(i int) g.Node {
+          return NavbarLink(links[i].Path, links[i].Name, currentPath == links[i].Path)
+        })),
+      ),
+    ),
+  )
+}
+
+// NavbarLink is a link in the Navbar.
+func NavbarLink(path, text string, active bool) g.Node {
+  return A(Href(path), g.Text(text),
+    // Apply CSS classes conditionally
+    c.Classes{
+      "px-3 py-2 rounded-md text-sm font-medium focus:outline-none focus:text-white focus:bg-gray-700": true,
+      "text-white bg-gray-900":                           active,
+      "text-gray-300 hover:text-white hover:bg-gray-700": !active,
+    },
+  )
+}
+
+func Container(children ...g.Node) g.Node {
+  return Div(Class("max-w-7xl mx-auto px-2 sm:px-6 lg:px-8"), g.Group(children))
+}
+
+func Prose(children ...g.Node) g.Node {
+  return Div(Class("prose"), g.Group(children))
+}
+
+func PageFooter() g.Node {
+  return Footer(Class("prose prose-sm prose-indigo"),
+    P(
+      // We can use string interpolation directly, like fmt.Sprintf.
+      g.Textf("Rendered %v. ", time.Now().Format(time.RFC3339)),
+
+      // Conditional inclusion
+      g.If(time.Now().Second()%2 == 0, g.Text("It's an even second.")),
+      g.If(time.Now().Second()%2 == 1, g.Text("It's an odd second.")),
+    ),
+
+    P(A(Href("https://www.gomponents.com"), g.Text("gomponents"))),
+  )
+}
+==================================================
+Handmade primitive compiler
+(tags: handmade compiler)
+---
+
+https://github.com/utimur/proggraming-lang-course
+
+// code.txt
+сумма РАВНО ( 5 МИНУС 9 ) ПЛЮС 5;
+КОНСОЛЬ сумма;
+КОНСОЛЬ ( 10 МИНУС 5 );
+
+// main.go
+package main
+
+import (
+  "fmt"
+  "io/ioutil"
+  "os"
+)
+
+func main() {
+  file := os.Args[1]
+  codeBytes, err := ioutil.ReadFile(file)
+  if err != nil {
+    panic(err)
+  }
+  code := string(codeBytes)
+  fmt.Println(code)
+
+  lexer := NewLexer(code)
+  _, err = lexer.Analysis()
+  if err != nil {
+    panic(err)
+  }
+
+  parser := NewParser(lexer.tokenList)
+  rootNode, err := parser.parseCode()
+  if err != nil {
+    panic(err)
+  }
+
+  parser.run(rootNode)
+}
+
+// token.go
+package main
+
+type Token struct {
+  tokenType TokenType
+  text      string
+  pos       int
+}
+
+func NewToken(tokenType TokenType, text string, pos int) Token {
+  return Token{
+    tokenType: tokenType,
+    text:      text,
+    pos:       pos,
+  }
+}
+
+// tokentype.go
+package main
+
+type TokenType struct {
+  name  string
+  regex string
+}
+
+func NewTokenType(name string, regex string) TokenType {
+  return TokenType{
+    name:  name,
+    regex: regex,
+  }
+}
+
+var TokenTypesList = map[string]TokenType{
+  "NUMBER":    NewTokenType("NUMBER", "[0-9]*"),
+  "VARIABLE":  NewTokenType("VARIABLE", "[а-я]*"),
+  "SEMICOLON": NewTokenType("SEMICOLON", ";"),
+  "SPACE":     NewTokenType("SPACE", "[ \\n\\t\\r]"),
+  "ASSIGN":    NewTokenType("ASSIGN", "РАВНО"),
+  "LOG":       NewTokenType("LOG", "КОНСОЛЬ"),
+  "PLUS":      NewTokenType("PLUS", "ПЛЮС"),
+  "MINUS":     NewTokenType("MINUS", "МИНУС"),
+  "LPAR":      NewTokenType("LPAR", "\\("),
+  "RPAR":      NewTokenType("RPAR", "\\)"),
+}
+
+// node.go
+package main
+
+import "fmt"
+
+const (
+  _ = iota
+  Variable
+  Number
+  UnaryOperation
+  Statements
+  Assign
+  BinOperation
+)
+
+type AssignNode struct {
+  operator  Token
+  leftNode  *ExpressionNode
+  rightNode *ExpressionNode
+}
+
+func NewAssignNode(operator Token, leftNode *ExpressionNode, rightNode *ExpressionNode) *AssignNode {
+  return &AssignNode{operator: operator, leftNode: leftNode, rightNode: rightNode}
+}
+
+type BinOperationNode struct {
+  operator  Token
+  leftNode  ExpressionNodeInterface
+  rightNode ExpressionNodeInterface
+}
+
+func NewBinOperationNode(operator Token, leftNode ExpressionNodeInterface, rightNode ExpressionNodeInterface) *BinOperationNode {
+  return &BinOperationNode{operator: operator, leftNode: leftNode, rightNode: rightNode}
+}
+
+type ExpressionNode struct{}
+
+type NumberNode struct {
+  number Token
+}
+
+func NewNumberNode(number Token) *NumberNode {
+  return &NumberNode{number: number}
+}
+
+type StatementsNode struct {
+  codeStrings []ExpressionNodeInterface
+}
+
+func NewStatementsNode() *StatementsNode {
+  return &StatementsNode{codeStrings: make([]ExpressionNodeInterface, 0)}
+}
+
+func (n *StatementsNode) addNode(node ExpressionNodeInterface) {
+  n.codeStrings = append(n.codeStrings, node)
+}
+
+type UnaryOperationNode struct {
+  operator Token
+  operand  ExpressionNodeInterface
+}
+
+func NewUnaryOperationNode(operator Token, operand ExpressionNodeInterface) *UnaryOperationNode {
+  return &UnaryOperationNode{operator: operator, operand: operand}
+}
+
+type VariableNode struct {
+  variable Token
+  value    int
+}
+
+func (n VariableNode) String() string {
+  return fmt.Sprintf("%s = %d", n.variable.text, n.value)
+}
+
+func NewVariableNode(variable Token) *VariableNode {
+  return &VariableNode{variable: variable}
+}
+
+type ExpressionNodeInterface interface {
+  GetType() int
+}
+
+func (n *VariableNode) GetType() int       { return Variable }
+func (n *NumberNode) GetType() int         { return Number }
+func (n *UnaryOperationNode) GetType() int { return UnaryOperation }
+func (n *StatementsNode) GetType() int     { return Statements }
+func (n *AssignNode) GetType() int         { return Assign }
+func (n *BinOperationNode) GetType() int   { return BinOperation }
+
+// lexer.go
+package main
+
+import (
+  "fmt"
+  "regexp"
+)
+
+type Lexer struct {
+  code      string
+  pos       int
+  tokenList []Token
+}
+
+func NewLexer(code string) *Lexer {
+  return &Lexer{
+    code: code,
+  }
+}
+
+func (l *Lexer) Analysis() ([]Token, error) {
+  flag := true
+  var err error
+  for flag {
+    flag, err = l.nextToken()
+    if err != nil {
+      panic(err)
+    }
+  }
+
+  var buf []Token
+  for _, token := range l.tokenList {
+    if token.tokenType.name != TokenTypesList["SPACE"].name && token.text != "" {
+      buf = append(buf, token)
+    }
+  }
+  l.tokenList = buf
+
+  return l.tokenList, err
+}
+
+func (l *Lexer) nextToken() (bool, error) {
+  if l.pos >= len(l.code) {
+    return false, nil
+  }
+
+  for _, tokenType := range TokenTypesList {
+    regex := regexp.MustCompile("^" + tokenType.regex)
+    result := regex.FindAllString(l.code[l.pos:], -1)
+    if result != nil {
+      token := NewToken(tokenType, result[0], l.pos)
+      l.pos += len(result[0])
+      l.tokenList = append(l.tokenList, token)
+      return true, nil
+    }
+  }
+  return false, fmt.Errorf("на позиции %d обнаружена ошибка", l.pos)
+}
+
+// parser.go
+package main
+
+import (
+  "fmt"
+  "strconv"
+)
+
+type Parser struct {
+  tokens []Token
+  pos    int
+  scope  map[string]*VariableNode
+}
+
+func NewParser(tokens []Token) Parser {
+  return Parser{
+    tokens: tokens,
+    scope:  make(map[string]*VariableNode),
+  }
+}
+
+func (p *Parser) match(expected ...TokenType) (Token, bool) {
+  if p.pos < len(p.tokens) {
+    currentToken := p.tokens[p.pos]
+    for _, tokenType := range expected {
+      if tokenType.name == currentToken.tokenType.name {
+        p.pos++
+        return currentToken, true
+      }
+    }
+  }
+  return Token{}, false
+}
+
+func (p *Parser) require(expected ...TokenType) (Token, error) {
+
+  if token, exists := p.match(expected...); exists {
+    return token, nil
+  }
+  return Token{}, fmt.Errorf(`на позиции %d ожидается %s`, p.pos, expected[0].name)
+}
+
+func (p *Parser) parseVariableOrNumber() (ExpressionNodeInterface, error) {
+  if variable, ok := p.match(TokenTypesList["VARIABLE"]); ok {
+    return NewVariableNode(variable), nil
+  }
+  if number, ok := p.match(TokenTypesList["NUMBER"]); ok {
+    return NewNumberNode(number), nil
+  }
+  return nil, fmt.Errorf(`ожидается переменная или число на %d позиции`, p.pos)
+}
+
+func (p *Parser) parsePrint() (ExpressionNodeInterface, error) {
+  if operatorLog, ok := p.match(TokenTypesList["LOG"]); ok {
+    formula, err := p.parseFormula()
+    if err != nil {
+      panic(err)
+      return nil, err
+    }
+    return NewUnaryOperationNode(operatorLog, formula), nil
+  }
+  return nil, fmt.Errorf(`ожидается унарный оператор КОНСОЛЬ на %d позиции`, p.pos)
+}
+
+func (p *Parser) parseParentheses() (ExpressionNodeInterface, error) {
+  if _, ok := p.match(TokenTypesList["LPAR"]); ok {
+    node, err := p.parseFormula()
+    if err != nil {
+      panic(err)
+      return nil, err
+    }
+    _, err = p.require(TokenTypesList["RPAR"])
+    return node, err
+  }
+  return p.parseVariableOrNumber()
+}
+
+func (p *Parser) parseFormula() (ExpressionNodeInterface, error) {
+  leftNode, err := p.parseParentheses()
+  if err != nil {
+    panic(err)
+    return nil, err
+  }
+  operator, ok := p.match(TokenTypesList["MINUS"], TokenTypesList["PLUS"])
+  for ok {
+    rightNode, err := p.parseParentheses()
+    if err != nil {
+      panic(err)
+      return nil, err
+    }
+    leftNode = NewBinOperationNode(operator, leftNode, rightNode)
+    operator, ok = p.match(TokenTypesList["MINUS"], TokenTypesList["PLUS"])
+  }
+  return leftNode, err
+}
+
+func (p *Parser) parseExpression() (ExpressionNodeInterface, error) {
+
+  if _, exists := p.match(TokenTypesList["VARIABLE"]); !exists {
+    printNode, err := p.parsePrint()
+    return printNode, err
+  }
+  p.pos--
+  variableNode, err := p.parseVariableOrNumber()
+  if err != nil {
+    panic(err)
+    return nil, err
+  }
+  if assignOperator, ok := p.match(TokenTypesList["ASSIGN"]); ok {
+    rightFormulaNode, err := p.parseFormula()
+    if err != nil {
+      panic(err)
+      return nil, err
+    }
+    binaryNode := NewBinOperationNode(assignOperator, variableNode, rightFormulaNode)
+    return binaryNode, err
+  }
+  return nil, fmt.Errorf(`после переменной ожидается оператор присвоения на позиции %d`, p.pos)
+}
+
+func (p *Parser) parseCode() (ExpressionNodeInterface, error) {
+  root := NewStatementsNode()
+  for p.pos < len(p.tokens) {
+    codeStringNode, err := p.parseExpression()
+    if err != nil {
+      panic(err)
+      return nil, err
+    }
+    _, err = p.require(TokenTypesList["SEMICOLON"])
+    if err != nil {
+      panic(err)
+      return nil, err
+    }
+    root.addNode(codeStringNode)
+  }
+  return root, nil
+}
+
+func (p *Parser) run(node ExpressionNodeInterface) interface{} {
+  switch val := node.(type) {
+  case *NumberNode:
+    res, err := strconv.Atoi(val.number.text)
+    if err != nil {
+      panic(err)
+    }
+    return res
+  case *UnaryOperationNode:
+    switch val.operator.tokenType.name {
+    case TokenTypesList["LOG"].name:
+      fmt.Println(p.run(val.operand))
+      return nil
+    }
+  case *BinOperationNode:
+    switch val.operator.tokenType.name {
+    case TokenTypesList["PLUS"].name:
+      l := p.run(val.leftNode)
+      r := p.run(val.rightNode)
+      if lVal, lOk := l.(int); lOk {
+        if rVal, rOk := r.(int); rOk {
+          return lVal + rVal
+        }
+      }
+      panic("bad plus")
+    case TokenTypesList["MINUS"].name:
+      l := p.run(val.leftNode)
+      r := p.run(val.rightNode)
+      if lVal, lOk := l.(int); lOk {
+        if rVal, rOk := r.(int); rOk {
+          return lVal - rVal
+        }
+      }
+      panic("bad minus")
+    case TokenTypesList["ASSIGN"].name:
+      res := p.run(val.rightNode)
+      variableNode := val.leftNode.(*VariableNode)
+      variableNode.value = res.(int)
+      p.scope[variableNode.variable.text] = variableNode
+      return res
+    }
+  case *VariableNode:
+    if variable, exists := p.scope[val.variable.text]; exists {
+      return variable
+    }
+    panic(fmt.Sprintf(`Переменная с названием %s не обнаружена`, val.variable.text))
+  case *StatementsNode:
+    for _, codeString := range val.codeStrings {
+      p.run(codeString)
+    }
+    return nil
+  default:
+    fmt.Printf("UNKNOWN: %+v\n", val)
+  }
+  panic("Ошибка!")
+}
+==================================================
+Pretty print golang struct
+(tags: pretty print golang struct)
+---
+
+https://github.com/shurcooL/go-goon
+
+x := Lang{
+  Name: "Go",
+  Year: 2009,
+  URL:  "http",
+  Inner: &Inner{
+    Field1: "Secret!",
+  },
+}
+
+goon.Dump(x)
+
+// Output:
+// (Lang)(Lang{
+//   Name: (string)("Go"),
+//   Year: (int)(2009),
+//   URL:  (string)("http"),
+//   Inner: (*Inner)(&Inner{
+//     Field1: (string)("Secret!"),
+//     Field2: (int)(0),
+//   }),
+// })
+
+adderFunc := func(a int, b int) int {
+  c := a + b
+  return c
+}
+
+goon.DumpExpr(adderFunc)
+
+// Output:
+// adderFunc = (func(int, int) int)(func(a int, b int) int {
+//   c := a + b
+//   return c
+// })
+==================================================
+Golang Finaliser and KeepAlive
+(tags: golang finalizer keepalive)
+---
+
+https://pkg.go.dev/runtime#KeepAlive
+
+package main
+
+import (
+  "fmt"
+  "runtime"
+  "syscall"
+)
+
+func main() {
+  type File struct { d int }
+  d, err := syscall.Open("f.txt", syscall.O_RDONLY, 0)
+  if err != nil {
+    panic(err)
+  }
+  p := &File{d}
+  runtime.SetFinalizer(p, func(p *File) { syscall.Close(p.d) })
+  var buf [10]byte
+  n, err := syscall.Read(p.d, buf[:])
+  if err != nil {
+    panic(err)
+  }
+  runtime.KeepAlive(p) // это гарантирует, что финалайзер не запустится до KeepAlive функции
+  fmt.Printf("%d: %v %s\n", n, buf, buf)
+}
+==================================================
+Golang linters
+(tags: golang linter)
+---
+
+https://habr.com/ru/post/457970/
+https://github.com/golangci/awesome-go-linters
+
+// Local installation https://golangci-lint.run/usage/install/#local-installation
+curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.40.1
+golangci-lint --version
+
+// run default linters
+golangci-lint run
+//show all linters
+golangci-lint help linters
+// run all linters
+golangci-lint run --enable-all
+// run specific linters
+golangci-lint run --disable-all -E gocritic -E nlreturn
+// run linters only for new changes
+golangci-lint run --new-from-rev=origin/master
+golangci-lint run --new-from-rev=HEAD~1
+// config for linters .golangci.yml
+==================================================
+Golang getter all source
+(tags: golang getter source)
+---
+
+https://github.com/hashicorp/go-getter
+
+package main
+
+import (
+  "s"
+)
+
+func main() {
+  getter.GetFile("f.txt", "https://github.com/hashicorp/go-getter/blob/main/get.go")
+}
+==================================================
+Graph of golang project relations
+(tags: graph golang project)
+---
+
+https://github.com/ofabry/go-callvis
+
+go get -u github.com/ofabry/go-callvis
+go-callvis .
+// see http://localhost:7878
+root@pc:/home/user1/projects/project1# /root/go/bin/go-callvis /home/user1/projects/project1/cmd/project1/main.go
+==================================================
+Swagger simple server
+(tags: swagger simple server)
+---
+
+https://goswagger.io/tutorial/todo-list.html
+
+// how to install
+download_url=$(curl -s https://api.github.com/repos/go-swagger/go-swagger/releases/latest | jq -r '.assets[] | select(.name | contains("'"$(uname | tr '[:upper:]' '[:lower:]')"'_amd64")) | .browser_download_url')
+curl -o /usr/local/bin/swagger -L'#' "$download_url"
+chmod +x /usr/local/bin/swagger
+
+// generate tampalte swagger.yml
+swagger init spec --title "A Todo list application" --description "From the todo list tutorial on goswagger.io" --version 1.0.0 --scheme http --consumes application/io.goswagger.examples.todo-list.v1+json --produces application/io.goswagger.examples.todo-list.v1+json
+
+// add path and definitions
+// swagger.yml
+swagger: "2.0"
+info:
+  description: From the todo list tutorial on goswagger.io
+  title: A Todo list application
+  version: 1.0.0
+consumes:
+  - application/io.goswagger.examples.todo-list.v1+json
+produces:
+  - application/io.goswagger.examples.todo-list.v1+json
+schemes:
+  - http
+paths:
+  /:
+    get:
+      tags:
+        - todos
+      operationId: findTodos
+      parameters:
+        - name: since
+          in: query
+          type: integer
+          format: int64
+        - name: limit
+          in: query
+          type: integer
+          format: int32
+          default: 20
+      responses:
+        200:
+          description: list the todo operations
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/item"
+        default:
+          description: generic error response
+          schema:
+            $ref: "#/definitions/error"
+    post:
+      tags:
+        - todos
+      operationId: addOne
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: "#/definitions/item"
+      responses:
+        201:
+          description: Created
+          schema:
+            $ref: "#/definitions/item"
+        default:
+          description: error
+          schema:
+            $ref: "#/definitions/error"
+  /{id}:
+    parameters:
+      - type: integer
+        format: int64
+        name: id
+        in: path
+        required: true
+    put:
+      tags:
+        - todos
+      operationId: updateOne
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: "#/definitions/item"
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: "#/definitions/item"
+        default:
+          description: error
+          schema:
+            $ref: "#/definitions/error"
+    delete:
+      tags:
+        - todos
+      operationId: destroyOne
+      responses:
+        204:
+          description: Deleted
+        default:
+          description: error
+          schema:
+            $ref: "#/definitions/error"
+definitions:
+  item:
+    type: object
+    required:
+      - description
+    properties:
+      id:
+        type: integer
+        format: int64
+        readOnly: true
+      description:
+        type: string
+        minLength: 1
+      completed:
+        type: boolean
+  error:
+    type: object
+    required:
+      - message
+    properties:
+      code:
+        type: integer
+        format: int64
+      message:
+        type: string
+
+// in terminal
+// swagger generate server -A todo-list -f ./swagger.yml
+// tree
+.
+├── cmd
+│   └── todo-list-server
+│       └── main.go
+├── go_build_main_go
+├── go_build_stepik
+├── go.mod
+├── go.sum
+├── models
+│   ├── error.go
+│   └── item.go
+├── restapi
+│   ├── configure_todo_list.go
+│   ├── doc.go
+│   ├── embedded_spec.go
+│   ├── operations
+│   │   ├── todo_list_api.go
+│   │   └── todos
+│   │       ├── add_one.go
+│   │       ├── add_one_parameters.go
+│   │       ├── add_one_responses.go
+│   │       ├── add_one_urlbuilder.go
+│   │       ├── destroy_one.go
+│   │       ├── destroy_one_parameters.go
+│   │       ├── destroy_one_responses.go
+│   │       ├── destroy_one_urlbuilder.go
+│   │       ├── find_todos.go
+│   │       ├── find_todos_parameters.go
+│   │       ├── find_todos_responses.go
+│   │       ├── find_todos_urlbuilder.go
+│   │       ├── get.go
+│   │       ├── get_parameters.go
+│   │       ├── get_responses.go
+│   │       ├── get_urlbuilder.go
+│   │       ├── update_one.go
+│   │       ├── update_one_parameters.go
+│   │       ├── update_one_responses.go
+│   │       └── update_one_urlbuilder.go
+│   └── server.go
+└── swagger.yml
+
+// get restapi/configure_todo_list.go here:
+https://github.com/go-swagger/go-swagger/blob/master/examples/tutorials/todo-list/server-complete/restapi/configure_todo_list.go
+
+// testing in terminal
+curl -i localhost:44309 -d "{\"description\":\"message $RANDOM\"}" -H 'Content-Type: application/io.goswagger.examples.todo-list.v1+json'
+// response like: {"description":"message 32024","id":1}
+curl -i localhost:44309/1 -X PUT -H 'Content-Type: application/io.goswagger.examples.todo-list.v1+json' -d '{"description":"go shopping"}'
+// {"description":"go shopping","id":1}
+curl -i localhost:44309/1 -X DELETE -H 'Content-Type: application/io.goswagger.examples.todo-list.v1+json'
+
+// swagger serve swagger.yml
+// http://localhost:35211/docs
+==================================================
+Swagger custom server
+(tags: swagger custom server)
+---
+
+https://goswagger.io/tutorial/custom-server.html
+
+// swagger/swagger.yml
+swagger: '2.0'
+info:
+  version: 1.0.0
+  title: Greeting Server
+paths:
+  /hello:
+    get:
+      produces:
+        - text/plain
+      parameters:
+        - name: name
+          required: false
+          type: string
+          in: query
+          description: defaults to World if not given
+      operationId: getGreeting
+      responses:
+        200:
+          description: returns a greeting
+          schema:
+            type: string
+            description: contains the actual greeting as plain text
+
+// swagger generate server -t gen -f ./swagger/swagger.yml --exclude-main -A greeter
+// tree
+.
+├── cmd
+│   └── greeter
+├── gen
+│   └── restapi
+│       ├── configure_greeter.go
+│       ├── doc.go
+│       ├── embedded_spec.go
+│       ├── operations
+│       │   ├── get_greeting.go
+│       │   ├── get_greeting_parameters.go
+│       │   ├── get_greeting_responses.go
+│       │   ├── get_greeting_urlbuilder.go
+│       │   └── greeter_api.go
+│       └── server.go
+└── swagger
+    └── swagger.yml
+
+// cmd/greeter/main.go
+package main
+
+import (
+  "flag"
+  "fmt"
+  "github.com/go-openapi/loads"
+  "github.com/go-openapi/runtime/middleware"
+  "github.com/go-openapi/swag"
+  "log"
+  "stepik/gen/restapi"
+  "stepik/gen/restapi/operations"
+)
+
+var portFlag = flag.Int("port", 3000, "Port to run this service on")
+
+func main() {
+  // load embedded swagger file
+  swaggerSpec, err := loads.Analyzed(restapi.SwaggerJSON, "")
+  if err != nil {
+    log.Fatalln(err)
+  }
+
+  // create new service API
+  api := operations.NewGreeterAPI(swaggerSpec)
+  server := restapi.NewServer(api)
+  defer server.Shutdown()
+
+  // parse flags
+  flag.Parse()
+  // set the port this service will be run on
+  server.Port = *portFlag
+
+  // set Handle
+  api.GetGreetingHandler = operations.GetGreetingHandlerFunc(
+    func(params operations.GetGreetingParams) middleware.Responder {
+      name := swag.StringValue(params.Name)
+      if name == "" {
+        name = "World"
+      }
+
+      greeting := fmt.Sprintf("Hello, %s!", name)
+      return operations.NewGetGreetingOK().WithPayload(greeting)
+    })
+
+  // serve API
+  if err := server.Serve(); err != nil {
+    log.Fatalln(err)
+  }
+}
+
+// 127.0.0.1:3000/hello?name=Bob
+// Hello, Bob!
+
+// swagger serve swagger/swagger.yml
+// http://localhost:35211/docs
+==================================================
+Using timeout without context
+(tags: timeout without context)
+---
+
+package main
+
+import (
+  "fmt"
+  "time"
+)
+
+func main() {
+  SendValue()
+}
+
+func SendValue(){
+  sendChan := make(chan bool, 1)
+
+  go func() {
+    sendChan <- Send()
+  }()
+
+  select {
+  case <-sendChan:
+    fmt.Println("case <-sendChan")
+  case <-time.After(3 * time.Second):
+    fmt.Println("case <-time.After(3 * time.Second)")
+    return
+  }
+
+  //continue logic in case send didn't timeout
+}
+
+func Send() bool {
+  time.Sleep(5 * time.Second)
+  return true
+}
+==================================================
+Recover
+(tags: recover)
+---
+
+// in top of function
+defer func() {
+  if err := recover(); err != nil {
+    fmt.Println(err)
+  }
+}()
+==================================================
+Easyjson
+(tags: easyjson)
+---
+
+go get -u github.com/mailru/easyjson/...
+// remove vendor folder (you can return it after generating)
+
+// main.go
+package main
+
+import (
+  "encoding/json"
+  "fmt"
+  "stepik/model"
+)
+
+func main() {
+  fmt.Println("fd")
+  m := model.Model{
+    Id:    1,
+    Name:  "dkfjsl",
+    Price: 3230,
+  }
+  // компилятор увидит что для данной структуры реализован метод MarshalJSON() в model_easyjson.go и будет использовать его
+  data, err := json.Marshal(m)
+  if err != nil {
+    panic(err)
+  }
+  fmt.Println(string(data))
+  var mm model.Model
+  json.Unmarshal(data, &mm)
+  fmt.Printf("%+v", mm)
+}
+
+// в package main не будет генерировать, поэтому структуры надо выносить в другие package
+// model/model.go
+package model
+
+//easyjson:json
+type Model struct {
+  Id    int     `json:"id"`
+  Name  string  `json:"name"`
+  Price float64 `json:"price"`
+}
+
+type Model2 struct {
+  Id    int     `json:"id"`
+  Name  string  `json:"name"`
+  Price float64 `json:"price"`
+}
+
+// easyjson model/model.go
+// in model folder in file model_easyjson.go you see generated code for Model (not for Model2)
+==================================================
+Golang postulates
+(tags: golang postulate)
+---
+
+==================================================
+Redis syntax
+(tags: redis syntax)
+---
