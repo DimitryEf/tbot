@@ -9373,7 +9373,11 @@ func zaploggerTest()  {
 
   wsFileAndConsole := zapcore.NewMultiWriteSyncer(zapcore.AddSync(os.Stdout), wsRotate)
   coreFileAndConsole := zapcore.NewCore(encConsoleTime, wsFileAndConsole, enab)
-  loggerWithCoreFileAndConsole := zap.New(coreFileAndConsole, zap.AddCaller())
+  loggerWithCoreFileAndConsole := zap.New(coreFileAndConsole, zap.AddCaller()). // add hook
+    WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
+    fmt.Println("test hooks test hooks")
+    return nil
+  }))
   loggerWithCoreFileAndConsole.Info("file and console")
   // in file: 2021-04-15T21:29:12.729+0300  INFO  experiment/zaplogger.go:123  file and console
   // 2021-04-15T21:29:12.729+0300  INFO  experiment/zaplogger.go:123  file and console
@@ -11238,7 +11242,7 @@ import (
 
 func main() {
   type File struct { d int }
-  d, err := syscall.Open("f.txt", syscall.O_RDONLY, 0)
+  d, err := syscall.Open("f.txt", syscall.O_RDONLY, 0) // go -> asm (no c)
   if err != nil {
     panic(err)
   }
@@ -11705,9 +11709,509 @@ type Model2 struct {
 // easyjson model/model.go
 // in model folder in file model_easyjson.go you see generated code for Model (not for Model2)
 ==================================================
+Golang dependency analysis with spagetti
+(tags: dependency analysis spagetti)
+---
+
+https://github.com/adonovan/spaghetti
+
+go install github.com/adonovan/spaghetti@latest
+~/go/bin/spaghetti [package] &
+// see http://localhost:18080/
+==================================================
+Golang project uml diagram with goplantuml
+(tags: uml diagram goplantuml)
+---
+
+https://github.com/jfeliu007/goplantuml
+
+go get github.com/jfeliu007/goplantuml/parser
+go get github.com/jfeliu007/goplantuml/cmd/goplantuml
+cd $GOPATH/src/github.com/jfeliu007/goplantuml
+go install ./...
+// go install github.com/jfeliu007/goplantuml@latest
+root@user:/home/user/project# /root/go/bin/goplantuml . > diagram.puml
+root@user:/home/user/project# apt install plantuml
+plantuml // it finds diagram.puml and convert it into png format
+// see created file diagram.png
+==================================================
 Golang postulates
 (tags: golang postulate)
 ---
+
+https://bitfieldconsulting.com/golang/commandments
+
+1. Use the standard testing library, not assertion-style test frameworks.
+2. Don't use init functions
+3. Write test function first for understanding what you'll need a way to inject that dependency
+4. You need to test is not some function, but some behaviours
+5. Instead, write zero-paperwork libraries, that can be invoked without prepare in a single line: game.Run(). Functional options are a good pattern.
+6. Don't call functions like os.Exit, log.Fatal or (worst of all) panic in your package (that is, outside of the main function)
+7. Use defer to close leakable resource
+8. Use f(src io.Writer) instead f(src *os.File). Accept interfaces, return structs. To avoid type assertion.
+9. Enforce good boundaries. Minimum contact with your code for users, hide others.
+10. Always check errors.
+11. Don't write a function that takes some interface{} value which can be one of seven concrete types. Instead, write seven functions, one for each concrete type.
+12. Beware of the context.Value trap: don't store anything in this typeless black hole that could instead be passed as a parameter.
+==================================================
+Measure the frequency
+(tags: measure frequency)
+---
+
+measure the frequency
+
+ticker := time.NewTicker(time.Second)
+start := time.Now()
+var count int64 = 0
+go func() {
+  for {
+    select {
+    case <-ticker.C:
+      cnt := atomic.LoadInt64(&count)
+      freq := float64(cnt) / time.Since(start).Seconds()
+      fmt.Printf("\r %f", freq)
+    }
+  }
+
+}()
+==================================================
+Golang performance
+(tags: golang performance)
+---
+
+https://chris124567.github.io/2021-06-21-go-performance/
+
+cpufile, err := os.Create("cpu.pprof")
+if err != nil {
+  panic(err)
+}
+err = pprof.StartCPUProfile(cpufile)
+if err != nil {
+  panic(err)
+}
+defer cpufile.Close()
+defer pprof.StopCPUProfile()
+
+// go tool pprof cpu.pprof
+// web
+
+// циклы можно заменить для подсчета аллокаций в среднем:
+// for i := 0; i < 100; i++ {
+//    foo(rand.Int())
+// }
+fmt.Println("Allocs:", int(testing.AllocsPerRun(100, func() {
+    foo(rand.Int())
+})))
+
+var bufPool = sync.Pool{
+  New: func() interface{} {
+    b := make([]byte, 256)
+    return &b
+  },
+}
+// get buffer from pool
+bufptr := bufPool.Get().(*[]byte)
+defer bufPool.Put(bufptr)
+buf := *bufptr
+// reset buf
+buf = buf[:0]
+
+// go build -gcflags='-m -m' .
+
+1. Смотреть что можно вынести из цикла
+2. Задавать длину капасити слайса при инициализации константой
+3. Переиспользовать переменные
+4. замена string(b) на *(*string)(unsafe.Pointer(&b))
+==================================================
+Godoc
+(tags: godoc)
+---
+
+go get golang.org/x/tools/cmd/godoc
+godoc -goroot .
+// see http://localhost:6060
+//whowing subderictories only
+==================================================
+Linux network interface buffer
+(tags: linux network interface buffer)
+---
+
+https://ixnfo.com/izmenenie-tx-i-rx-buferov-setevyih-interfeysov-v-linux.html
+
+// вывести имена сетевых интерфейсов
+ifconfig -a
+// посмотреть размеры буферов RX (прием) и TX (передача)
+ethtool -g eth0
+// меняем размеры буферов
+ethtool -G eth0 rx 512 tx 512
+
+// чтоб изменения сохранились надо
+// добавить строку в /etc/network/interfaces:
+post-up /sbin/ethtool -G eth0 rx 512 tx 512
+// если не помогло то еще сюда /etc/rc.local
+/sbin/ethtool -G eth0 rx 512 tx 512
+==================================================
+Golang defer
+(tags: golang defer)
+---
+
+package main
+
+import "fmt"
+
+func main() {
+  f(true)
+}
+
+func f(t bool)  {
+  defer fmt.Println("defer 1", t) // выполнится с t = true, т.к. значение передается при объявлении
+  defer fmt.Println("defer 2", t)
+  defer func() {
+    fmt.Println("defer 3", t) // выполнится с t = false, т.к. нет входящего параметра - значение передается при вызове
+  }()
+  defer func(t bool){
+    fmt.Println("defer 4", t) // выполнится с t = true, т.к. есть входящий параметр - значение передается при объявлении
+  }(t)
+  t = false
+  return
+  defer fmt.Println("defer 5", t) // не выполнится, т.к. выше return - ф-ция не объявится
+}
+
+// defer 4 true
+// defer 3 false
+// defer 2 true
+// defer 1 true
+==================================================
+Assembly in golang
+(tags: golang assembly)
+---
+
+// main.go
+package main
+
+import "fmt"
+
+func add(x,y int64) int64
+
+func addInline(x, y int64) int64 {
+  return x + y
+}
+
+//go:noinline
+func addNoinline(x, y int64) int64 {
+  return x + y
+}
+
+func main() {
+  fmt.Println(add(2,3))
+}
+
+// add_amd64.s
+TEXT ·add(SB),$0   // название пакета перед midpoint, символ midpoint (U+00b7) перед названием функции
+MOVQ x+0(FP),BX    // 1-й аргумент копируется в BX
+MOVQ x+8(FP),BP    // 2-й аргумент копируется в BP
+ADDQ BP,BX         // в BX записывается сумма из BX+BP
+MOVQ BX,ret+16(FP) // ВХ записывается в
+RET
+
+
+// обязательно символ midpoint (U+00b7) перед названием функции и пустая строка после RET
+
+// main_test.go
+package main
+
+import "testing"
+
+func Benchmark_add(b *testing.B) {
+  for i := 0; i < b.N; i++ {
+    add(2,3)
+  }
+}
+
+func Benchmark_addInline(b *testing.B) {
+  for i := 0; i < b.N; i++ {
+    addInline(2,3)
+  }
+}
+
+func Benchmark_addNoinline(b *testing.B) {
+  for i := 0; i < b.N; i++ {
+    addNoinline(2,3)
+  }
+}
+
+// go test -bench=. -benchmem
+Benchmark_add-4          306339064   3.835 ns/op   0 B/op  0 allocs/op
+Benchmark_addInline-4    1000000000  0.2572 ns/op  0 B/op  0 allocs/op
+Benchmark_addNoinline-4  302509377   3.661 ns/op   0 B/op  0 allocs/op
+==================================================
+Run func in direct time
+(tags: run func direct time)
+---
+
+https://research.swtch.com/hwmm
+
+package main
+
+import (
+  "fmt"
+  "time"
+)
+
+func myFunc() {
+  fmt.Printf("+ %v\n", time.Now())
+}
+
+func main() {
+  callTime, _ := time.Parse("Jan 2, 2006 15:04:05 MST", "Jul 7, 2021 16:40:00 MSK")
+  duration := callTime.Sub(time.Now())
+
+  go func() {
+    time.Sleep(duration)
+    myFunc()
+  }()
+
+  // some work...
+  time.Sleep(time.Hour * 24)
+}
+
+// other way
+ctx, _ := context.WithDeadline(context.Background(), callTime)
+go func(ctxIn context.Context) {
+  <-ctxIn.Done()
+  myFunc()
+}(ctxIn)
+==================================================
+Graph BFS and DFS
+(tags: graph bfs dfs)
+---
+
+package main
+
+import (
+  "fmt"
+  "sync"
+)
+
+/*
+     a1
+   /  |  \
+  b1  b2  b3
+ /  \
+c1  c2
+*/
+
+func main() {
+  graph := NewGraph()
+  a1 := &Node{name: "a1"}
+  b1 := &Node{name: "b1"}
+  b2 := &Node{name: "b2"}
+  b3 := &Node{name: "b3"}
+  c1 := &Node{name: "c1"}
+  c2 := &Node{name: "c2"}
+
+  graph.AddNode(a1)
+  graph.AddNode(b1)
+  graph.AddNode(b2)
+  graph.AddNode(b3)
+  graph.AddNode(c1)
+  graph.AddNode(c2)
+
+  graph.AddEdge(a1, b1)
+  graph.AddEdge(a1, b2)
+  graph.AddEdge(a1, b3)
+  graph.AddEdge(b1, c1)
+  graph.AddEdge(b1, c2)
+
+  // добавить цикл в граф
+  //graph.AddEdge(c2, b1)
+
+  fmt.Println("BFS")
+  graph.BFS(a1)
+  fmt.Println("DFS")
+  graph.DFS(a1)
+}
+
+type Graph struct {
+  nodes []*Node
+  edges map[Node][]*Node
+  mutex sync.RWMutex
+}
+
+type Node struct {
+  name string
+}
+
+func NewGraph() *Graph {
+  return &Graph{
+    nodes: make([]*Node, 0),
+    edges: make(map[Node][]*Node),
+  }
+}
+
+func (g *Graph) AddNode(node *Node) {
+  g.mutex.Lock()
+  g.nodes = append(g.nodes, node)
+  g.mutex.Unlock()
+}
+
+func (g *Graph) AddEdge(start, end *Node) {
+  g.mutex.Lock()
+  g.edges[*start] = append(g.edges[*start], end)
+  g.mutex.Unlock()
+}
+
+func (g *Graph) BFS(start *Node) {
+  g.mutex.RLock()
+  defer g.mutex.RUnlock()
+
+  queue := []*Node{start}
+  visited := make(map[Node]bool) // для цикличного графа
+  for len(queue) > 0 {
+    current := queue[0]
+    fmt.Println(current)
+    queue = queue[1:]
+    for _, node := range g.edges[*current] {
+      if !visited[*node] {
+        queue = append(queue, node)
+        visited[*node] = true
+      }
+    }
+  }
+}
+
+func (g *Graph) DFS(start *Node) {
+  g.mutex.RLock()
+  defer g.mutex.RUnlock()
+
+  visited := make(map[Node]bool) // для цикличного графа
+  fmt.Println(start)
+  g.recursive(start, visited)
+}
+
+func (g *Graph) recursive(node *Node, visited map[Node]bool)  {
+  for _, n := range g.edges[*node] {
+    if !visited[*n] {
+      fmt.Println(n)
+      visited[*n] = true
+      g.recursive(n, visited)
+    }
+  }
+}
+==================================================
+Scheduler
+(tags: scheduler)
+---
+
+https://www.ardanlabs.com/blog/2018/08/scheduling-in-go-part1.html
+
+// main.go
+package main
+
+func main() {
+  example(make([]string, 2, 4), "hello", 10)
+}
+
+//go:noinline
+func example(slice []string, str string, i int) {
+  panic("Want stack trace")
+}
+
+// go build main.go
+// go tool objdump -S -s "main.example" ./main
+TEXT main.example(SB) /home/dim/projects/stepik/main.go
+func example(slice []string, str string, i int) {
+  0x45ed00  64488b0c25f8ffffff  MOVQ FS:0xfffffff8, CX
+  0x45ed09  483b6110            CMPQ 0x10(CX), SP
+  0x45ed0d  762b                JBE 0x45ed3a
+  0x45ed0f  4883ec18            SUBQ $0x18, SP
+  0x45ed13  48896c2410          MOVQ BP, 0x10(SP)
+  0x45ed18  488d6c2410          LEAQ 0x10(SP), BP
+        panic("Want stack trace")
+  0x45ed1d  488d053c770000      LEAQ 0x773c(IP), AX
+  0x45ed24  48890424            MOVQ AX, 0(SP)
+  0x45ed28  488d0549b50200      LEAQ 0x2b549(IP), AX
+  0x45ed2f  4889442408          MOVQ AX, 0x8(SP)
+  0x45ed34  e8e7e3fcff          CALL runtime.gopanic(SB)
+  0x45ed39  90                  NOPL
+func example(slice []string, str string, i int) {
+  0x45ed3a  e821afffff          CALL runtime.morestack_noctxt(SB)
+  0x45ed3f  90                  NOPL
+  0x45ed40  ebbe                JMP main.example(SB)
+
+
+// Thread States
+* Waiting: поток остановлен и ждет чего-то, чтобы продолжить. Это могло произойти по таким причинам, как ожидание оборудования (диск, сеть), операционной системы (системные вызовы) или вызовов синхронизации (атомарные, мьютексы). Эти типы задержек являются основной причиной плохой производительности.
+* Runnable: потоку требуется время на ядре, чтобы он мог выполнять назначенные ему машинные инструкции. Если у вас много потоков, которым нужно время, им придется ждать дольше, чтобы получить время.
+* Executing: поток был помещен в ядро ​​и выполняет свои машинные инструкции.
+// Types Of Work
+* CPU-Bound : это работа, которая никогда не создает ситуации, когда поток может быть переведен в состояние ожидания. Это работа, по которой постоянно ведутся расчеты. Поток, вычисляющий Pi до N-й цифры, будет привязан к процессору.
+* IO-Bound : это работа, которая заставляет потоки переходить в состояния ожидания. Это работа, заключающаяся в запросе доступа к ресурсу по сети или выполнении системных вызовов операционной системы. Поток, которому требуется доступ к базе данных, будет привязан к вводу-выводу. Я бы включил события синхронизации (мьютексы, атомарные), которые заставляют поток ждать как часть этой категории.
+
+Если вы работаете в Linux, Mac или Windows, вы работаете в ОС с вытесняющим планировщиком. Т.е он сам решает в определенное время какому потоку дать CPU
+
+Физический акт перестановки потоков в ядре называется переключением контекста (1000 - 1500 наносекунд). Принимая во внимание, что оборудование должно иметь возможность разумно выполнять (в среднем) 12 инструкций за наносекунду на ядро, переключение контекста может стоить вам от 12k до 18k инструкций задержки.
+
+Меньше потоков в состоянии Runnable означает меньше накладных расходов на планирование и больше времени, которое каждый поток получает с течением времени.
+
+Если один поток на данном ядре вносит изменения в свою копию строки кэша, то с помощью аппаратной магии все другие копии той же строки кэша должны быть помечены как грязные. Когда поток пытается читать или записывать доступ к грязной строке кэша, для получения новой копии строки кэша требуется доступ к основной памяти (от ~ 100 до ~ 300 тактовых циклов). Это называется проблемой согласованности кеша
+
+https://www.ardanlabs.com/blog/2018/08/scheduling-in-go-part2.html
+
+// main.go
+package main
+
+import (
+  "fmt"
+  "runtime"
+)
+
+func main() {
+
+    // NumCPU returns the number of logical
+    // CPUs usable by the current process.
+    fmt.Println(runtime.NumCPU())
+}
+
+NumCPU() = кол-во процессоров * кол-во ядер в процессоре * кол-во потоков на ядро (Hyper-Threading)
+
+Каждому P назначается поток ОС («M»). Буква M означает машина. Этот поток по-прежнему управляется ОС, и ОС по-прежнему отвечает за размещение потока в ядре для выполнения
+
+Каждой программе Go также дается начальная горутина («G»), которая является путем выполнения программы Go. Вы можете думать о горутинах как о потоках уровня приложения, и они во многом похожи на потоки ОС. Точно так же, как потоки ОС включаются и выключаются из контекста ядра, горутины включаются и выключаются из контекста M.
+
+В планировщике Go есть две разные очереди выполнения: глобальная очередь выполнения (GRQ) и локальная очередь выполнения (LRQ). Каждому P дается LRQ, который управляет горутинами, назначенными для выполнения в контексте P. Эти горутины по очереди включаются и выключаются контекстом M, назначенным этому P. GRQ предназначен для горутин, которые пока еще не были назначены для P. Существует процесс перемещения горутин из GRQ в LRQ.
+
+Текущая реализация планировщика Go ( >= 1.14) - это планировщик кооперативный с вытеснением. Кооперативный означает, что планировщику необходимы четко определенные события пользовательского пространства, которые происходят в безопасных точках кода, чтобы принимать решения по планированию. С вытеснением означает, что есть предел времени (forcePreemptNS = 10 мс), после которого G будет вытеснена с P.
+
+wantAsyncPreempt — проверяем «хочет ли» G вытесняться, тут, например, проверится валидность текущего статуса горутины. isAsyncSafePoint — проверяем, можно ли вытеснить прямо сейчас. Самая интересная из проверок здесь — находится ли G в safe или unsafe point'е. Кроме того, мы должны быть уверены, что поток, на котором выполняется G, так же готов к вытеснению G. (https://habr.com/ru/post/502506/)
+
+// Goroutine может находиться в одном из трех состояний:
+* Waiting: означает, что горутина остановлена и ждет чего-то, чтобы продолжить. Это могло произойти по таким причинам, как ожидание операционной системы (системные вызовы) или вызовы синхронизации (атомарные операции и мьютексные операции). Эти типы задержек являются основной причиной плохой производительности.
+* Runnable: означает, что горутине нужно время на M, чтобы она могла выполнить назначенные ей инструкции. Если у вас много горутин, которым нужно время, то горутины должны ждать дольше, чтобы получить время. Кроме того, индивидуальное количество времени, которое получает любая горутина, сокращается, поскольку все больше горутинов соревнуются за время.
+* Executing: означает, что горутина была помещена на M (P?) и выполняет свои инструкции.
+
+Планировщик начинает планировать, при:
+* Использование ключевого слова go - Новая горутина создана, она дает планировщику возможность принять решение о планировании
+* Вывоз мусора - Поскольку сборщик мусора работает с использованием собственного набора горутин, этим горутинам требуется время на M для запуска.
+* Системные вызовы - Если горутина выполняет системный вызов, который заставляет горутину блокировать M, иногда планировщик может переключать контекст горутины с M и контекстно переключать новую горутину на тот же M. Однако иногда новый M является требуется для продолжения выполнения горутин, стоящих в очереди в P.
+* Синхронизация и оркестровка - Если вызов атомарной, мьютексной или канальной операции приведет к блокировке горутины, планировщик может переключить контекст для запуска новой горутины.
+
+Асинхронные системные вызовы. Сетевой опросчик (network poller) - kqueue (MacOS), epoll (Linux) или iocp (Windows). Помогает сохранить M доступным для выполнения других Goroutines в LRQ P без необходимости создавать новые M.
+Синхронные системные вызовы. В этом случае сетевой опросчик не может быть использован, и Goroutine, выполняющий системный вызов, будет блокировать M. Одним из примеров системного вызова, который не может быть выполнен асинхронно, являются системные вызовы на основе файлов. Если вы используете CGO, могут быть другие ситуации, когда вызов функций C также заблокирует M. планировщик отсоединяет M1 от P с присоединенным блокирующим Goroutine-1. Затем планировщик вводит новый M2 для обслуживания P.
+
+Work Stealing
+у P1 больше нет горутин для выполнения. P1 должен проверить P2 на наличие горутин в его LRQ и взять половину того, что он найдет. Если там нет, то смотрит в GRQ
+
+По сути, Go превратил работу IO / Blocking в работу, связанную с процессором на уровне ОС. Вот почему нам не нужно больше потоков, чем есть виртуальных ядер.
+==================================================
+Vue
+(tags: vue)
+---
+
+// install node.js for npm - https://nodejs.org
+npm install -g @vue/cli
+vue create .
+y -> Manually -> Chose,Babel,Router,Vuex -> 3.x -> y -> In package.json -> n
 
 ==================================================
 Redis syntax
